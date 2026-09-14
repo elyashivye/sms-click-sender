@@ -1,6 +1,6 @@
 import "./style.css";
 import { connect, isWebUsbSupported, reconnect } from "./lib/adb-client.js";
-import { downloadSampleFile, guessPhoneColumn, parseContactsFile } from "./lib/excel.js";
+import { downloadSampleFile, guessCountryCodeColumn, guessPhoneColumn, parseContactsFile } from "./lib/excel.js";
 import { SendJob } from "./lib/sender.js";
 import * as schedulesApi from "./lib/schedules-client.js";
 import { render, unknownPlaceholders } from "./lib/templating.js";
@@ -104,6 +104,17 @@ async function handleFileChange(event) {
     });
     el("phone-column-row").hidden = false;
 
+    const guessedCountryCodeColumn = guessCountryCodeColumn(headers);
+    const countryCodeColumnSelect = el("country-code-column-select");
+    countryCodeColumnSelect.innerHTML = '<option value="">ללא - תמיד קידומת ברירת המחדל</option>';
+    headers.forEach((h) => {
+      const opt = document.createElement("option");
+      opt.value = h;
+      opt.textContent = h;
+      if (h === guessedCountryCodeColumn) opt.selected = true;
+      countryCodeColumnSelect.appendChild(opt);
+    });
+
     renderChips(headers);
     refreshPreview();
   } catch (err) {
@@ -187,6 +198,7 @@ function currentSendConfig() {
     phoneColumn: el("phone-column-select").value || state.phoneColumn,
     channel: currentChannel(),
     countryCode: el("country-code-input").value.trim() || "972",
+    countryCodeColumn: el("country-code-column-select").value || null,
     delaySeconds: Number(el("delay-input").value) || 4,
     manualTap:
       el("manual-tap-x").value && el("manual-tap-y").value
@@ -195,10 +207,12 @@ function currentSendConfig() {
   };
 }
 
+const CHANNEL_LABELS = { sms: "SMS", whatsapp: "WhatsApp", both: "SMS + WhatsApp" };
+
 async function handleSend() {
-  const { template, phoneColumn, channel, countryCode, delaySeconds, manualTap } = currentSendConfig();
+  const { template, phoneColumn, channel, countryCode, countryCodeColumn, delaySeconds, manualTap } =
+    currentSendConfig();
   const dryRun = el("dry-run-checkbox").checked;
-  const channelLabel = channel === "whatsapp" ? "WhatsApp" : "SMS";
 
   if (!state.rows.length) {
     alert("יש להעלות קובץ אנשי קשר קודם.");
@@ -212,7 +226,7 @@ async function handleSend() {
     alert("יש להתחבר לטלפון לפני שליחה בפועל (או להשאיר את מצב הבדיקה מסומן).");
     return;
   }
-  if (!dryRun && !confirm(`פעולה זו תשלח הודעות ${channelLabel} אמיתיות מהטלפון המחובר. להמשיך?`)) {
+  if (!dryRun && !confirm(`פעולה זו תשלח הודעות ${CHANNEL_LABELS[channel]} אמיתיות מהטלפון המחובר. להמשיך?`)) {
     return;
   }
 
@@ -220,6 +234,7 @@ async function handleSend() {
     adb: state.adb,
     channel,
     countryCode,
+    countryCodeColumn,
     dryRun,
     delaySeconds,
     manualTap,
@@ -249,7 +264,8 @@ function renderJobStatus(snapshot) {
           ? '<span class="status-ok">בדיקה בלבד</span>'
           : '<span class="status-ok">נשלח</span>'
         : `<span class="status-fail">נכשל: ${escapeHtml(r.error || "")}</span>`;
-      return `<tr><td class="number">${escapeHtml(r.number)}</td><td>${escapeHtml(r.message)}</td><td>${statusLabel}</td></tr>`;
+      const channelLabel = r.channel === "whatsapp" ? "WhatsApp" : "SMS";
+      return `<tr><td class="number">${escapeHtml(r.number)}</td><td>${escapeHtml(r.message)}</td><td>${channelLabel}</td><td>${statusLabel}</td></tr>`;
     })
     .join("");
 
@@ -384,7 +400,8 @@ async function refreshSchedulesList() {
 async function handleCreateSchedule() {
   const statusEl = el("sched-create-status");
   const label = el("sched-label").value.trim();
-  const { template, phoneColumn, channel, countryCode, delaySeconds, manualTap } = currentSendConfig();
+  const { template, phoneColumn, channel, countryCode, countryCodeColumn, delaySeconds, manualTap } =
+    currentSendConfig();
 
   if (!label) return void (statusEl.textContent = "יש להזין תווית.");
   if (!state.rows.length) return void (statusEl.textContent = "יש להעלות קובץ אנשי קשר קודם (בשלב 2 למעלה).");
@@ -410,6 +427,7 @@ async function handleCreateSchedule() {
       phoneColumn,
       channel,
       countryCode,
+      countryCodeColumn,
       delaySeconds,
       manualTap,
     });
@@ -437,6 +455,7 @@ async function handleRunJob({ requestId, scheduleId, jobData }) {
     adb,
     channel: jobData.channel,
     countryCode: jobData.countryCode,
+    countryCodeColumn: jobData.countryCodeColumn,
     dryRun: false,
     delaySeconds: jobData.delaySeconds,
     manualTap: jobData.manualTap,
@@ -544,7 +563,7 @@ function setupChannelPicker() {
 
   document.querySelectorAll('input[name="channel"]').forEach((radio) => {
     radio.addEventListener("change", () => {
-      const isWhatsApp = currentChannel() === "whatsapp";
+      const isWhatsApp = currentChannel() === "whatsapp" || currentChannel() === "both";
       whatsappFields.hidden = !isWhatsApp;
       whatsappWarning.hidden = !isWhatsApp;
 

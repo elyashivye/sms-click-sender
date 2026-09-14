@@ -81,6 +81,24 @@ export function guessPhoneColumn(headers) {
   return headers[0] ?? null;
 }
 
+const COUNTRY_CODE_HEADER_HINTS = [
+  "קידומת מדינה", "קידומת", "מדינה", "country code", "country", "dial code",
+];
+
+// Best-effort guess of a per-contact country-code column (for WhatsApp) -
+// returns null (no guess) rather than falling back to headers[0], since
+// most files won't have one at all and guessing wrong here is worse than
+// just leaving it unset.
+export function guessCountryCodeColumn(headers) {
+  for (const header of headers) {
+    const low = header.toLowerCase();
+    if (COUNTRY_CODE_HEADER_HINTS.some((hint) => header.includes(hint) || low.includes(hint))) {
+      return header;
+    }
+  }
+  return null;
+}
+
 // Strip spaces/dashes/parentheses etc, keep only digits and a leading +.
 export function normalizePhone(value) {
   if (value === null || value === undefined) return "";

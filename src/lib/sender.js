@@ -1,4 +1,4 @@
-// Runs a batch of personalized sends (SMS or WhatsApp) and reports
+// Runs a batch of personalized sends (SMS, WhatsApp, or both) and reports
 // progress via a simple subscribe callback (no server/polling needed -
 // everything runs in-tab).
 
@@ -10,17 +10,38 @@ import { render } from "./templating.js";
 const DEFAULT_DELAY_SECONDS = 4;
 const DEFAULT_COUNTRY_CODE = "972";
 
+// Occasional much-longer pause between WhatsApp sends, on top of the usual
+// jitter - makes the overall rhythm look less like a fixed-interval script.
+// Only applied to WhatsApp sends: plain SMS has no comparable anti-spam
+// ban risk, so there's no reason to slow those runs down.
+const LONG_PAUSE_CHANCE = 0.08;
+const LONG_PAUSE_MIN_MS = 45_000;
+const LONG_PAUSE_MAX_MS = 120_000;
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// A little randomness so the gap between sends isn't a robotically exact
-// interval every time - mainly relevant for WhatsApp, whose anti-spam
-// systems watch for that kind of uniform pattern.
-function jitteredDelayMs(seconds) {
+function randomizedDelayMs(seconds, isWhatsApp) {
   const base = Math.max(seconds, 0) * 1000;
-  const jitter = base * 0.2 * (Math.random() * 2 - 1);
+  if (isWhatsApp && Math.random() < LONG_PAUSE_CHANCE) {
+    return LONG_PAUSE_MIN_MS + Math.random() * (LONG_PAUSE_MAX_MS - LONG_PAUSE_MIN_MS);
+  }
+  const jitterRatio = isWhatsApp ? 0.35 : 0.2;
+  const jitter = base * jitterRatio * (Math.random() * 2 - 1);
   return Math.max(500, Math.round(base + jitter));
+}
+
+// A row can carry its own country-code column value (e.g. a contact list
+// mixing Israeli and foreign numbers that both happen to use a leading 0
+// locally) - that takes priority over the single default when present.
+function resolveCountryCode(row, countryCodeColumn, defaultCountryCode) {
+  if (countryCodeColumn) {
+    const raw = (row[countryCodeColumn] ?? "").toString().trim();
+    const digits = raw.replace(/\D/g, "");
+    if (digits) return digits;
+  }
+  return defaultCountryCode;
 }
 
 export class SendJob {
@@ -46,9 +67,10 @@ export class SendJob {
   }
 
   snapshot() {
+    const perContact = this.config.channel === "both" ? 2 : 1;
     return {
       status: this.status,
-      total: this.rows.length,
+      total: this.rows.length * perContact,
       completed: this.results.length,
       results: [...this.results],
     };
@@ -66,44 +88,53 @@ export class SendJob {
       adb,
       channel = "sms",
       countryCode = DEFAULT_COUNTRY_CODE,
+      countryCodeColumn = null,
       dryRun = false,
       delaySeconds = DEFAULT_DELAY_SECONDS,
       manualTap = null,
     } = this.config;
 
+    const channelsToSend = channel === "both" ? ["sms", "whatsapp"] : [channel];
+
     for (const row of this.rows) {
-      if (this.cancelRequested) {
-        this.status = "cancelled";
-        this._notify();
-        return;
-      }
-
-      const message = render(this.template, row);
-      const rawNumber = row[this.phoneColumn];
-      const number = channel === "whatsapp" ? toWhatsAppNumber(rawNumber, countryCode) : normalizePhone(rawNumber);
-      const entry = { number, message };
-
-      if (!number) {
-        entry.ok = false;
-        entry.error = "מספר טלפון חסר או לא תקין";
-      } else if (dryRun) {
-        entry.ok = true;
-        entry.dryRun = true;
-      } else {
-        try {
-          await sendMessage(adb, channel, number, message, manualTap);
-          entry.ok = true;
-        } catch (err) {
-          entry.ok = false;
-          entry.error = err instanceof AdbError ? err.message : String(err?.message || err);
+      for (const ch of channelsToSend) {
+        if (this.cancelRequested) {
+          this.status = "cancelled";
+          this._notify();
+          return;
         }
-      }
 
-      this.results.push(entry);
-      this._notify();
+        const message = render(this.template, row);
+        const rawNumber = row[this.phoneColumn];
+        const number =
+          ch === "whatsapp"
+            ? toWhatsAppNumber(rawNumber, resolveCountryCode(row, countryCodeColumn, countryCode))
+            : normalizePhone(rawNumber);
 
-      if (!dryRun && !this.cancelRequested) {
-        await sleep(jitteredDelayMs(delaySeconds));
+        const entry = { number, message, channel: ch };
+
+        if (!number) {
+          entry.ok = false;
+          entry.error = "מספר טלפון חסר או לא תקין";
+        } else if (dryRun) {
+          entry.ok = true;
+          entry.dryRun = true;
+        } else {
+          try {
+            await sendMessage(adb, ch, number, message, manualTap);
+            entry.ok = true;
+          } catch (err) {
+            entry.ok = false;
+            entry.error = err instanceof AdbError ? err.message : String(err?.message || err);
+          }
+        }
+
+        this.results.push(entry);
+        this._notify();
+
+        if (!dryRun && !this.cancelRequested) {
+          await sleep(randomizedDelayMs(delaySeconds, ch === "whatsapp"));
+        }
       }
     }
 

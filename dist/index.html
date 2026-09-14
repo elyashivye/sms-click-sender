@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-BwCTKR3O.js"></script>
+  <script type="module" crossorigin src="./assets/index-BNcskaO3.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-1uKnqNqE.css">
 </head>
 <body>
@@ -146,11 +146,16 @@
           <legend>ערוץ שליחה</legend>
           <label class="radio-label"><input type="radio" name="channel" id="channel-sms" value="sms" checked /> SMS</label>
           <label class="radio-label"><input type="radio" name="channel" id="channel-whatsapp" value="whatsapp" /> WhatsApp</label>
+          <label class="radio-label"><input type="radio" name="channel" id="channel-both" value="both" /> שניהם</label>
         </fieldset>
       </div>
 
       <div class="row" id="whatsapp-fields" hidden>
-        <label>קידומת מדינה (ללא +) <input type="text" id="country-code-input" value="972" style="width: 90px" /></label>
+        <label>קידומת מדינה - ברירת מחדל (ללא +) <input type="text" id="country-code-input" value="972" style="width: 90px" /></label>
+        <label>
+          או לפי עמודה בקובץ (אופציונלי)
+          <select id="country-code-column-select"><option value="">ללא - תמיד קידומת ברירת המחדל</option></select>
+        </label>
       </div>
       <p class="banner" id="whatsapp-warning" hidden>
         שליחה המונית מוואטסאפ אישי (לא API עסקי רשמי) נושאת סיכון לחסימה זמנית/קבועה של
@@ -193,7 +198,7 @@
 
       <div class="table-wrap">
         <table id="results-table" hidden>
-          <thead><tr><th class="number">מספר</th><th>הודעה</th><th>סטטוס</th></tr></thead>
+          <thead><tr><th class="number">מספר</th><th>הודעה</th><th>ערוץ</th><th>סטטוס</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
