@@ -7,12 +7,14 @@
 import { Adb, AdbDaemonTransport, escapeArg } from "@yume-chan/adb";
 import { AdbDaemonWebUsbDeviceManager } from "@yume-chan/adb-daemon-webusb";
 import AdbWebCredentialStore from "@yume-chan/adb-credential-web";
+import { normalizePhone } from "./excel.js";
 
 const WAIT_AFTER_OPEN_MS = 1600;
 const WAIT_BEFORE_RETRY_MS = 1200;
 const WAIT_AFTER_TAP_MS = 1000;
 
 const SEND_TEXT_CANDIDATES = new Set(["send", "שלח"]);
+const SAVE_TEXT_CANDIDATES = new Set(["save", "done", "שמור", "סיום", "אישור"]);
 const BOUNDS_RE = /\[(\d+),(\d+)\]\[(\d+),(\d+)\]/;
 
 export class AdbError extends Error {}
@@ -153,9 +155,12 @@ function boundsCenter(boundsStr) {
   return [Math.round((l + r) / 2), Math.round((t + b) / 2)];
 }
 
-// Search a uiautomator XML dump for the most likely "Send" control.
-// Returns [x, y] of its center, or null if nothing matched.
-export function findSendButton(xmlText) {
+// Search a uiautomator XML dump for the most likely control matching the
+// given hints. Scores nodes by: resource-id containing resourceIdHint (3) >
+// exact text/content-desc match against textCandidates (2) > text/desc just
+// containing resourceIdHint (1). Returns [x, y] of the best match's center,
+// or null if nothing matched.
+function findButton(xmlText, { resourceIdHint, textCandidates }) {
   let doc;
   try {
     doc = new DOMParser().parseFromString(xmlText, "text/xml");
@@ -175,11 +180,11 @@ export function findSendButton(xmlText) {
     const desc = (node.getAttribute("content-desc") || "").trim().toLowerCase();
 
     let score = 0;
-    if (resourceId.includes("send")) {
+    if (resourceId.includes(resourceIdHint)) {
       score = 3;
-    } else if (SEND_TEXT_CANDIDATES.has(text) || SEND_TEXT_CANDIDATES.has(desc)) {
+    } else if (textCandidates.has(text) || textCandidates.has(desc)) {
       score = 2;
-    } else if (text.includes("send") || desc.includes("send")) {
+    } else if (text.includes(resourceIdHint) || desc.includes(resourceIdHint)) {
       score = 1;
     }
 
@@ -191,6 +196,18 @@ export function findSendButton(xmlText) {
 
   if (!bestNode) return null;
   return boundsCenter(bestNode.getAttribute("bounds"));
+}
+
+// Search a uiautomator XML dump for the most likely "Send" control.
+// Returns [x, y] of its center, or null if nothing matched.
+export function findSendButton(xmlText) {
+  return findButton(xmlText, { resourceIdHint: "send", textCandidates: SEND_TEXT_CANDIDATES });
+}
+
+// Search a uiautomator XML dump for the most likely "Save"/"Done" control
+// (used when confirming a new contact on the native "Create contact" screen).
+export function findSaveButton(xmlText) {
+  return findButton(xmlText, { resourceIdHint: "save", textCandidates: SAVE_TEXT_CANDIDATES });
 }
 
 // Opens the compose screen for number/text on the given channel ("sms" or
@@ -226,4 +243,59 @@ export async function sendMessage(adb, channel, number, text, manualTap = null) 
   await sleep(WAIT_AFTER_TAP_MS);
   await goHome(adb);
   return { tapPoint: point };
+}
+
+// Opens Android's native "Create contact" screen pre-filled with name+number
+// and taps Save/Done. Mirrors sendMessage's open -> dump -> find -> tap ->
+// goHome flow. manualTap: optional [x, y] fallback if the Save button can't
+// be located automatically.
+export async function createContact(adb, name, number, manualTap = null) {
+  const cmd =
+    "am start -a android.intent.action.INSERT -t vnd.android.cursor.dir/contact " +
+    `--es name ${escapeArg(name)} --es phone ${escapeArg(number)}`;
+  await shellText(adb, cmd);
+  await sleep(WAIT_AFTER_OPEN_MS);
+
+  let point = findSaveButton(await dumpUi(adb));
+
+  if (!point) {
+    await sleep(WAIT_BEFORE_RETRY_MS);
+    point = findSaveButton(await dumpUi(adb));
+  }
+
+  if (!point && manualTap) {
+    point = manualTap;
+  }
+
+  if (!point) {
+    await goHome(adb);
+    throw new AdbError(
+      "לא נמצא כפתור 'שמור' על מסך יצירת איש הקשר. ודא שהמכשיר לא נעול, או הגדר קואורדינטות גיבוי ידניות."
+    );
+  }
+
+  await tap(adb, point[0], point[1]);
+  await sleep(WAIT_AFTER_TAP_MS);
+  await goHome(adb);
+  return { tapPoint: point };
+}
+
+const PHONE_QUERY_LINE_RE = /data1=(.+)$/;
+
+// Reads every phone number already saved in the device's Contacts Provider,
+// normalized the same way normalizePhone() normalizes uploaded numbers -
+// so callers can dedupe by simple Set membership before creating anything.
+export async function listExistingPhoneNumbers(adb) {
+  const output = await shellText(
+    adb,
+    "content query --uri content://com.android.contacts/data/phones --projection data1"
+  );
+  const numbers = new Set();
+  for (const line of output.split("\n")) {
+    const match = PHONE_QUERY_LINE_RE.exec(line.trim());
+    if (!match) continue;
+    const normalized = normalizePhone(match[1].trim());
+    if (normalized) numbers.add(normalized);
+  }
+  return numbers;
 }

@@ -81,6 +81,25 @@ export function guessPhoneColumn(headers) {
   return headers[0] ?? null;
 }
 
+const NAME_HEADER_HINTS = [
+  "שם מלא", "שם פרטי", "שם", "name", "full name", "first name",
+];
+
+// Best-effort guess of which column holds the contact's name (used when
+// saving contacts to the phone). Falls back to the first column that isn't
+// the phone column, rather than headers[0] blindly, since headers[0] is
+// often itself the phone column in simple two-column files.
+export function guessNameColumn(headers) {
+  for (const header of headers) {
+    const low = header.toLowerCase();
+    if (NAME_HEADER_HINTS.some((hint) => header.includes(hint) || low.includes(hint))) {
+      return header;
+    }
+  }
+  const phoneColumn = guessPhoneColumn(headers);
+  return headers.find((h) => h !== phoneColumn) ?? headers[0] ?? null;
+}
+
 const COUNTRY_CODE_HEADER_HINTS = [
   "קידומת מדינה", "קידומת", "מדינה", "country code", "country", "dial code",
 ];

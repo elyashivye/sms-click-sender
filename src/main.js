@@ -1,7 +1,14 @@
 import "./style.css";
 import { connect, isWebUsbSupported, reconnect } from "./lib/adb-client.js";
-import { downloadSampleFile, guessCountryCodeColumn, guessPhoneColumn, parseContactsFile } from "./lib/excel.js";
+import {
+  downloadSampleFile,
+  guessCountryCodeColumn,
+  guessNameColumn,
+  guessPhoneColumn,
+  parseContactsFile,
+} from "./lib/excel.js";
 import { SendJob } from "./lib/sender.js";
+import { SaveContactsJob } from "./lib/contacts-job.js";
 import * as schedulesApi from "./lib/schedules-client.js";
 import { render, unknownPlaceholders } from "./lib/templating.js";
 
@@ -11,6 +18,7 @@ const state = {
   rows: [],
   phoneColumn: null,
   job: null,
+  contactsJob: null,
   hasSentOnce: false,
   serverConfig: null, // { url, password } - only used in Electron
 };
@@ -27,12 +35,19 @@ function escapeHtml(value) {
 
 // ---------- Step 1: device ----------
 
+function setSidebarDeviceStatus(connected, label) {
+  const statusEl = el("sidebar-device-status");
+  statusEl.textContent = label;
+  statusEl.classList.toggle("connected", connected);
+}
+
 function setConnectedUi(adb) {
   state.adb = adb;
   el("device-status").textContent = `מחובר: ${adb.serial}`;
   el("connect-btn").hidden = true;
   el("disconnect-btn").hidden = false;
-  updateStepper();
+  setSidebarDeviceStatus(true, `מחובר: ${adb.serial}`);
+  updateNavProgress();
 
   adb.disconnected.then(() => {
     if (state.adb === adb) {
@@ -40,7 +55,8 @@ function setConnectedUi(adb) {
       el("device-status").textContent = "המכשיר התנתק.";
       el("connect-btn").hidden = false;
       el("disconnect-btn").hidden = true;
-      updateStepper();
+      setSidebarDeviceStatus(false, "הטלפון לא מחובר");
+      updateNavProgress();
     }
   });
 }
@@ -63,7 +79,8 @@ async function handleDisconnect() {
   el("device-status").textContent = "מנותק.";
   el("connect-btn").hidden = false;
   el("disconnect-btn").hidden = true;
-  updateStepper();
+  setSidebarDeviceStatus(false, "הטלפון לא מחובר");
+  updateNavProgress();
 }
 
 async function trySilentReconnect() {
@@ -103,6 +120,23 @@ async function handleFileChange(event) {
       phoneSelect.appendChild(opt);
     });
     el("phone-column-row").hidden = false;
+
+    const guessedNameColumn = guessNameColumn(headers);
+    const nameSelect = el("name-column-select");
+    nameSelect.innerHTML = "";
+    headers.forEach((h) => {
+      const opt = document.createElement("option");
+      opt.value = h;
+      opt.textContent = h;
+      if (h === guessedNameColumn) opt.selected = true;
+      nameSelect.appendChild(opt);
+    });
+    el("contacts-save-box").hidden = false;
+    el("contacts-progress-wrap").hidden = true;
+    el("contacts-results-table").hidden = true;
+    document.querySelector("#contacts-results-table tbody").innerHTML = "";
+    el("contacts-cancel-btn").hidden = true;
+    el("save-contacts-btn").disabled = false;
 
     const guessedCountryCodeColumn = guessCountryCodeColumn(headers);
     const countryCodeColumnSelect = el("country-code-column-select");
@@ -148,6 +182,72 @@ function insertAtCursor(text) {
   refreshPreview();
 }
 
+// ---------- save as contacts ----------
+
+async function handleSaveContacts() {
+  const nameColumn = el("name-column-select").value;
+  const phoneColumn = el("phone-column-select").value || state.phoneColumn;
+  const dryRun = el("contacts-dry-run-checkbox").checked;
+
+  if (!state.rows.length) {
+    alert("יש להעלות קובץ אנשי קשר קודם.");
+    return;
+  }
+  if (!dryRun && !state.adb) {
+    alert("יש להתחבר לטלפון לפני שמירה בפועל (או להשאיר את מצב הבדיקה מסומן).");
+    return;
+  }
+  if (!dryRun && !confirm(`פעולה זו תיצור אנשי קשר חדשים בטלפון המחובר עבור ${state.rows.length} שורות (מי שכבר שמור ידולג). להמשיך?`)) {
+    return;
+  }
+
+  const job = new SaveContactsJob(state.rows, nameColumn, phoneColumn, {
+    adb: state.adb,
+    dryRun,
+  });
+  state.contactsJob = job;
+
+  el("save-contacts-btn").disabled = true;
+  el("contacts-cancel-btn").hidden = false;
+  el("contacts-progress-wrap").hidden = false;
+  el("contacts-results-table").hidden = false;
+  document.querySelector("#contacts-results-table tbody").innerHTML = "";
+
+  job.onUpdate(renderContactsJobStatus);
+  await job.run();
+}
+
+const CONTACTS_STATE_LABELS = {
+  created: '<span class="status-ok">נוצר</span>',
+  dryRun: '<span class="status-ok">בדיקה בלבד</span>',
+  skipped: '<span class="status-ok">כבר שמור - דולג</span>',
+};
+
+function renderContactsJobStatus(snapshot) {
+  const pct = snapshot.total ? Math.round((snapshot.completed / snapshot.total) * 100) : 0;
+  el("contacts-progress-fill").style.width = pct + "%";
+  el("contacts-progress-text").textContent = `${snapshot.completed} / ${snapshot.total} (${snapshot.status})`;
+
+  const tbody = document.querySelector("#contacts-results-table tbody");
+  tbody.innerHTML = snapshot.results
+    .map((r) => {
+      const statusLabel = r.ok
+        ? CONTACTS_STATE_LABELS[r.state] || '<span class="status-ok">בוצע</span>'
+        : `<span class="status-fail">נכשל: ${escapeHtml(r.error || "")}</span>`;
+      return `<tr><td>${escapeHtml(r.name)}</td><td class="number">${escapeHtml(r.number)}</td><td>${statusLabel}</td></tr>`;
+    })
+    .join("");
+
+  if (snapshot.status === "done" || snapshot.status === "cancelled") {
+    el("save-contacts-btn").disabled = false;
+    el("contacts-cancel-btn").hidden = true;
+  }
+}
+
+function handleContactsCancel() {
+  state.contactsJob?.cancel();
+}
+
 // ---------- Step 4: preview ----------
 
 function refreshPreview() {
@@ -179,7 +279,7 @@ function refreshPreview() {
     ? `שים לב: פרמטרים לא מוכרים בהודעה: ${unknown.map((p) => `{${p}}`).join(", ")}`
     : "";
 
-  updateStepper();
+  updateNavProgress();
 
   el("preview-count").textContent = rows.length
     ? `מוצגות עד 20 הודעות מתוך ${rows.length} אנשי קשר בקובץ.`
@@ -273,7 +373,7 @@ function renderJobStatus(snapshot) {
     el("send-btn").disabled = false;
     el("cancel-btn").hidden = true;
     if (snapshot.status === "done") state.hasSentOnce = true;
-    updateStepper();
+    updateNavProgress();
   }
 }
 
@@ -475,42 +575,52 @@ async function handleRunJob({ requestId, scheduleId, jobData }) {
   });
 }
 
-// ---------- stepper (top nav: click-to-scroll, "done" + "active" states) ----------
+// ---------- sidebar nav (page switching + "done" states + mobile drawer) ----------
 
-function setStepDone(sectionId, isDone) {
-  document.querySelector(`.step[data-goto="${sectionId}"]`)?.classList.toggle("done", isDone);
+function setNavDone(sectionId, isDone) {
+  document.querySelector(`.nav-item[data-section="${sectionId}"]`)?.classList.toggle("done", isDone);
 }
 
-function updateStepper() {
-  setStepDone("device-section", !!state.adb);
-  setStepDone("upload-section", state.rows.length > 0);
-  setStepDone("message-section", el("message-textarea").value.trim().length > 0);
-  setStepDone("preview-section", state.rows.length > 0);
-  setStepDone("send-section", state.hasSentOnce);
+function updateNavProgress() {
+  setNavDone("device-section", !!state.adb);
+  setNavDone("contacts-section", state.rows.length > 0);
+  setNavDone("message-section", state.hasSentOnce || el("message-textarea").value.trim().length > 0);
 }
 
-function setupStepper() {
-  document.querySelectorAll(".step").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.getElementById(button.dataset.goto)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+function showPage(sectionId) {
+  document.querySelectorAll(".page[data-page]").forEach((page) => {
+    page.hidden = page.id !== sectionId;
+  });
+  document.querySelectorAll(".nav-item[data-section]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.section === sectionId);
+  });
+  closeSidebarMobile();
+  window.scrollTo({ top: 0 });
+}
+
+function openSidebarMobile() {
+  el("sidebar").classList.add("open");
+  el("sidebar-backdrop").hidden = false;
+  requestAnimationFrame(() => el("sidebar-backdrop").classList.add("open"));
+}
+
+function closeSidebarMobile() {
+  el("sidebar").classList.remove("open");
+  el("sidebar-backdrop").classList.remove("open");
+  el("sidebar-backdrop").hidden = true;
+}
+
+function setupSidebarNav() {
+  document.querySelectorAll(".nav-item[data-section]").forEach((button) => {
+    button.addEventListener("click", () => showPage(button.dataset.section));
   });
 
-  const sections = [...document.querySelectorAll(".step")]
-    .map((button) => document.getElementById(button.dataset.goto))
-    .filter(Boolean);
+  el("sidebar-toggle").addEventListener("click", () => {
+    el("sidebar").classList.contains("open") ? closeSidebarMobile() : openSidebarMobile();
+  });
+  el("sidebar-backdrop").addEventListener("click", closeSidebarMobile);
 
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        document
-          .querySelector(`.step[data-goto="${entry.target.id}"]`)
-          ?.classList.toggle("active", entry.isIntersecting);
-      });
-    },
-    { rootMargin: "-40% 0px -50% 0px" }
-  );
-  sections.forEach((section) => observer.observe(section));
+  showPage("device-section");
 }
 
 // ---------- USB debugging guide drawer ----------
@@ -594,14 +704,16 @@ el("phone-column-select").addEventListener("change", refreshPreview);
 el("message-textarea").addEventListener("input", refreshPreview);
 el("send-btn").addEventListener("click", handleSend);
 el("cancel-btn").addEventListener("click", handleCancel);
+el("save-contacts-btn").addEventListener("click", handleSaveContacts);
+el("contacts-cancel-btn").addEventListener("click", handleContactsCancel);
 
-setupStepper();
+setupSidebarNav();
 setupUsbGuideDrawer();
 setupChannelPicker();
-updateStepper();
+updateNavProgress();
 
 if (isElectron()) {
-  el("schedules-section").hidden = false;
+  el("nav-schedules").hidden = false;
   el("sched-type").addEventListener("change", updateScheduleTypeFields);
   el("sched-connect-btn").addEventListener("click", handleSchedConnect);
   el("sched-create-btn").addEventListener("click", handleCreateSchedule);

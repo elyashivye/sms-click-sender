@@ -7,286 +7,322 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-BNcskaO3.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-1uKnqNqE.css">
+  <script type="module" crossorigin src="./assets/index-CgZLOV-q.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BmCpeAKy.css">
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-      </span>
-      <div>
-        <h1>שליחת SMS מהמחשב</h1>
-        <p class="subtitle">הודעה מותאמת אישית לכל איש קשר, ישירות מהדפדפן - דרך הטלפון שמחובר בכבל</p>
+  <div class="app-shell">
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="תפריט">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="48" height="48" rx="13" fill="#4f46e5"/>
+            <rect x="13" y="7" width="17" height="30" rx="3.5" stroke="white" stroke-width="2.3" fill="none"/>
+            <line x1="18.5" y1="32" x2="24.5" y2="32" stroke="white" stroke-width="2.3" stroke-linecap="round"/>
+            <circle cx="35" cy="13" r="10.5" fill="#16a34a"/>
+            <rect x="30" y="9" width="10" height="7.5" rx="2.6" fill="white"/>
+            <path d="M32.5 16.5 V19.5 L35.5 16.5 Z" fill="white"/>
+          </svg>
+        </span>
+        <div>
+          <div class="brand-title">שליחת SMS</div>
+          <div class="brand-subtitle">מהמחשב</div>
+        </div>
       </div>
-    </div>
-  </header>
 
-  <nav class="stepper" id="stepper" aria-label="שלבים">
-    <button type="button" class="step" data-goto="device-section">
-      <span class="step-badge">1</span><span class="step-label">חיבור</span>
-    </button>
-    <button type="button" class="step" data-goto="upload-section">
-      <span class="step-badge">2</span><span class="step-label">קובץ</span>
-    </button>
-    <button type="button" class="step" data-goto="message-section">
-      <span class="step-badge">3</span><span class="step-label">הודעה</span>
-    </button>
-    <button type="button" class="step" data-goto="preview-section">
-      <span class="step-badge">4</span><span class="step-label">תצוגה</span>
-    </button>
-    <button type="button" class="step" data-goto="send-section">
-      <span class="step-badge">5</span><span class="step-label">שליחה</span>
-    </button>
-  </nav>
-
-  <main>
-    <div id="unsupported-banner" class="banner" hidden>
-      הדפדפן הזה לא תומך בטכנולוגיית WebUSB, שהמערכת צריכה כדי לדבר עם הטלפון.
-      יש לפתוח את העמוד ב-<strong>Chrome</strong> או <strong>Edge</strong> (לא Firefox/Safari), דרך כתובת
-      <strong>https://</strong> (או localhost).
-    </div>
-
-    <!-- Step 1: device -->
-    <section class="card" id="device-section">
-      <h2>
-        <span class="step-icon">
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" data-section="device-section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-        </span>
-        <span>חיבור הטלפון</span>
-      </h2>
-      <p class="hint">חברו את הטלפון בכבל USB, ודאו שניפוי USB (USB Debugging) מופעל, ולחצו על הכפתור.</p>
-      <button type="button" class="guide-link" id="usb-guide-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 1.7-2.4 3.4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        לא בטוחים איך מפעילים ניפוי USB? מדריך שלב-אחר-שלב
-      </button>
-      <div class="row">
-        <button id="connect-btn" type="button" class="primary">התחבר לטלפון</button>
-        <button id="disconnect-btn" type="button" hidden>נתק</button>
-      </div>
-      <p class="status-line" id="device-status"></p>
-    </section>
-
-    <!-- Step 2: upload contacts -->
-    <section class="card" id="upload-section">
-      <h2>
-        <span class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-        </span>
-        <span>קובץ אנשי קשר</span>
-      </h2>
-      <p class="hint">קובץ Excel או CSV - כל עמודה בו (שם, טלפון, עיר, כל דבר) תהפוך לפרמטר זמין להודעה.</p>
-      <div class="row upload-row">
-        <label class="file-drop" for="file-input">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span id="file-drop-label">בחרו קובץ xlsx / xls / csv</span>
-        </label>
-        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden />
-        <button id="sample-file-btn" type="button" class="ghost">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m6 9 6 6 6-6"/><path d="M19 21H5"/></svg>
-          קובץ לדוגמה
+          <span>חיבור הטלפון</span>
+          <span class="nav-dot"></span>
         </button>
-      </div>
-      <p class="status-line" id="upload-status"></p>
-      <div class="row" id="phone-column-row" hidden>
-        <label>
-          עמודת מספר הטלפון
-          <select id="phone-column-select"></select>
-        </label>
-      </div>
-    </section>
-
-    <!-- Step 3: message -->
-    <section class="card" id="message-section">
-      <h2>
-        <span class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </span>
-        <span>ההודעה</span>
-      </h2>
-      <div class="params-box">
-        <p class="params-label">פרמטרים זמינים - לחיצה מוסיפה אותם להודעה במקום הסמן:</p>
-        <div class="chips" id="param-chips">
-          <p class="chips-empty" id="chips-empty">העלו קובץ אנשי קשר למעלה כדי לראות כאן את הפרמטרים הזמינים</p>
-        </div>
-      </div>
-      <textarea id="message-textarea" rows="5" placeholder="לדוגמה: שלום {שם}, מזכירים לך את הפגישה..."></textarea>
-    </section>
-
-    <!-- Step 4: preview -->
-    <section class="card" id="preview-section">
-      <h2>
-        <span class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-        </span>
-        <span>תצוגה מקדימה</span>
-      </h2>
-      <p class="hint" id="preview-warning"></p>
-      <div class="table-wrap">
-        <table id="preview-table" hidden>
-          <thead><tr><th class="number">מספר</th><th>הודעה</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <p class="empty-state" id="preview-empty">כאן תופיע תצוגה מקדימה של ההודעות ברגע שיהיו קובץ אנשי קשר וטקסט הודעה.</p>
-      </div>
-      <p class="hint" id="preview-count"></p>
-    </section>
-
-    <!-- Step 5: send -->
-    <section class="card" id="send-section">
-      <h2>
-        <span class="step-icon">
+        <button type="button" class="nav-item" data-section="contacts-section">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>אנשי קשר</span>
+          <span class="nav-dot"></span>
+        </button>
+        <button type="button" class="nav-item" data-section="message-section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </span>
-        <span>שליחה</span>
-      </h2>
-      <div class="row">
-        <fieldset class="channel-picker">
-          <legend>ערוץ שליחה</legend>
-          <label class="radio-label"><input type="radio" name="channel" id="channel-sms" value="sms" checked /> SMS</label>
-          <label class="radio-label"><input type="radio" name="channel" id="channel-whatsapp" value="whatsapp" /> WhatsApp</label>
-          <label class="radio-label"><input type="radio" name="channel" id="channel-both" value="both" /> שניהם</label>
-        </fieldset>
-      </div>
-
-      <div class="row" id="whatsapp-fields" hidden>
-        <label>קידומת מדינה - ברירת מחדל (ללא +) <input type="text" id="country-code-input" value="972" style="width: 90px" /></label>
-        <label>
-          או לפי עמודה בקובץ (אופציונלי)
-          <select id="country-code-column-select"><option value="">ללא - תמיד קידומת ברירת המחדל</option></select>
-        </label>
-      </div>
-      <p class="banner" id="whatsapp-warning" hidden>
-        שליחה המונית מוואטסאפ אישי (לא API עסקי רשמי) נושאת סיכון לחסימה זמנית/קבועה של
-        המספר - בעיקר לרשימות גדולות או לאנשים שלא שמרו אותך כאיש קשר. מומלץ להתחיל בכמות
-        קטנה, להשאיר השהיה ארוכה בין הודעות, ולעקוב אחרי התוצאות.
-      </p>
-
-      <div class="row">
-        <label class="checkbox-label">
-          <input type="checkbox" id="dry-run-checkbox" checked />
-          מצב בדיקה (Dry Run) - לא שולח בפועל, רק מדמה
-        </label>
-        <label>
-          השהיה בין הודעות (שניות)
-          <input type="number" id="delay-input" value="4" min="1" step="1" />
-        </label>
-      </div>
-
-      <details class="advanced">
-        <summary>הגדרות מתקדמות - קואורדינטות גיבוי ידניות לכפתור "שלח"</summary>
-        <p class="hint">
-          המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציה
-          שנבחרה, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
-        </p>
-        <div class="row">
-          <label>X <input type="number" id="manual-tap-x" min="0" /></label>
-          <label>Y <input type="number" id="manual-tap-y" min="0" /></label>
-        </div>
-      </details>
-
-      <div class="row">
-        <button id="send-btn" type="button" class="primary">התחל שליחה</button>
-        <button id="cancel-btn" type="button" hidden>עצור</button>
-      </div>
-
-      <div id="progress-wrap" hidden>
-        <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
-        <p class="hint" id="progress-text"></p>
-      </div>
-
-      <div class="table-wrap">
-        <table id="results-table" hidden>
-          <thead><tr><th class="number">מספר</th><th>הודעה</th><th>ערוץ</th><th>סטטוס</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Step 6: schedules (Electron only) -->
-    <section class="card" id="schedules-section" hidden>
-      <h2>
-        <span class="step-icon">
+          <span>הודעה ושליחה</span>
+          <span class="nav-dot"></span>
+        </button>
+        <button type="button" class="nav-item" id="nav-schedules" data-section="schedules-section" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </span>
-        <span>תזמונים ותזכורות</span>
-      </h2>
-      <p class="hint">
-        זמין רק בתוכנה להורדה (לא באתר בדפדפן) - כי צריך שהתוכנה תרוץ ברקע כדי לבדוק תזמונים
-        גם כשהחלון סגור. רשימת אנשי הקשר וההודעה שנטענו למעלה נשמרות מקומית במחשב הזה בלבד,
-        ומשמשות לכל תזמון חדש שתיצור.
-      </p>
+          <span>תזמונים</span>
+        </button>
+      </nav>
 
-      <div id="schedules-setup">
-        <p class="hint">מגדירים פעם אחת: כתובת השרת (שם הדומיין שהעלית אליו את הפרויקט) והסיסמה.</p>
-        <div class="row">
-          <label>כתובת השרת <input type="text" id="sched-server-url" placeholder="https://example.com" /></label>
-          <label>סיסמה <input type="password" id="sched-password" /></label>
-        </div>
-        <div class="row">
-          <button id="sched-connect-btn" type="button" class="primary">התחבר / הגדר סיסמה</button>
-        </div>
-        <p class="status-line" id="sched-setup-status"></p>
+      <div class="sidebar-footer">
+        <p class="sidebar-status" id="sidebar-device-status">הטלפון לא מחובר</p>
+        <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת (מלבד תזמון, אם הגדרת אחד).</p>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <div id="unsupported-banner" class="banner" hidden>
+        הדפדפן הזה לא תומך בטכנולוגיית WebUSB, שהמערכת צריכה כדי לדבר עם הטלפון.
+        יש לפתוח את העמוד ב-<strong>Chrome</strong> או <strong>Edge</strong> (לא Firefox/Safari), דרך כתובת
+        <strong>https://</strong> (או localhost).
       </div>
 
-      <div id="schedules-main" hidden>
-        <p class="hint" id="sched-connected-as"></p>
+      <!-- Page: device -->
+      <section class="card page" id="device-section" data-page>
+        <h2>
+          <span class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          </span>
+          <span>חיבור הטלפון</span>
+        </h2>
+        <p class="hint">חברו את הטלפון בכבל USB, ודאו שניפוי USB (USB Debugging) מופעל, ולחצו על הכפתור.</p>
+        <button type="button" class="guide-link" id="usb-guide-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 1.7-2.4 3.4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          לא בטוחים איך מפעילים ניפוי USB? מדריך שלב-אחר-שלב
+        </button>
+        <div class="row">
+          <button id="connect-btn" type="button" class="primary">התחבר לטלפון</button>
+          <button id="disconnect-btn" type="button" hidden>נתק</button>
+        </div>
+        <p class="status-line" id="device-status"></p>
+      </section>
 
-        <div class="row">
-          <label>תווית <input type="text" id="sched-label" placeholder="לדוגמה: תזכורת שבועית" /></label>
-          <label>
-            סוג תזמון
-            <select id="sched-type">
-              <option value="once">חד פעמי</option>
-              <option value="daily">כל יום</option>
-              <option value="weekly">כל שבוע</option>
-            </select>
+      <!-- Page: contacts (upload + save-as-contacts) -->
+      <section class="card page" id="contacts-section" data-page hidden>
+        <h2>
+          <span class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          </span>
+          <span>קובץ אנשי קשר</span>
+        </h2>
+        <p class="hint">קובץ Excel או CSV - כל עמודה בו (שם, טלפון, עיר, כל דבר) תהפוך לפרמטר זמין להודעה.</p>
+        <div class="row upload-row">
+          <label class="file-drop" for="file-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="file-drop-label">בחרו קובץ xlsx / xls / csv</span>
           </label>
-        </div>
-        <div class="row" id="sched-once-fields">
-          <label>תאריך ושעה <input type="datetime-local" id="sched-once-at" /></label>
-        </div>
-        <div class="row" id="sched-daily-fields" hidden>
-          <label>שעה <input type="time" id="sched-daily-time" value="09:00" /></label>
-        </div>
-        <div class="row" id="sched-weekly-fields" hidden>
-          <label>
-            יום בשבוע
-            <select id="sched-weekly-day">
-              <option value="0">ראשון</option>
-              <option value="1">שני</option>
-              <option value="2">שלישי</option>
-              <option value="3">רביעי</option>
-              <option value="4">חמישי</option>
-              <option value="5">שישי</option>
-              <option value="6">שבת</option>
-            </select>
-          </label>
-          <label>שעה <input type="time" id="sched-weekly-time" value="09:00" /></label>
-        </div>
-        <div class="row">
-          <button id="sched-create-btn" type="button" class="primary">
-            צור תזמון מהקובץ וההודעה שלמעלה
+          <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden />
+          <button id="sample-file-btn" type="button" class="ghost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m6 9 6 6 6-6"/><path d="M19 21H5"/></svg>
+            קובץ לדוגמה
           </button>
         </div>
-        <p class="status-line" id="sched-create-status"></p>
+        <p class="status-line" id="upload-status"></p>
+        <div class="row" id="phone-column-row" hidden>
+          <label>
+            עמודת מספר הטלפון
+            <select id="phone-column-select"></select>
+          </label>
+          <label>
+            עמודת שם (לשמירה כאיש קשר)
+            <select id="name-column-select"></select>
+          </label>
+        </div>
+
+        <div class="contacts-save-box" id="contacts-save-box" hidden>
+          <h3>שמירת אנשי הקשר בטלפון</h3>
+          <p class="hint">
+            יוצר איש קשר חדש בטלפון לכל שורה בקובץ. מי שכבר שמור בטלפון (לפי מספר טלפון
+            זהה) ידולג אוטומטית - לא ייווצרו כפילויות.
+          </p>
+          <div class="row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="contacts-dry-run-checkbox" checked />
+              מצב בדיקה (Dry Run) - לא יוצר אנשי קשר בפועל, רק מדמה
+            </label>
+          </div>
+          <div class="row">
+            <button id="save-contacts-btn" type="button" class="primary">שמור את כולם כאנשי קשר</button>
+            <button id="contacts-cancel-btn" type="button" hidden>עצור</button>
+          </div>
+          <div id="contacts-progress-wrap" hidden>
+            <div class="progress-bar"><div class="progress-bar-fill" id="contacts-progress-fill"></div></div>
+            <p class="hint" id="contacts-progress-text"></p>
+          </div>
+          <div class="table-wrap">
+            <table id="contacts-results-table" hidden>
+              <thead><tr><th>שם</th><th class="number">מספר</th><th>סטטוס</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page: message + preview + send -->
+      <section class="card page" id="message-section" data-page hidden>
+        <h2>
+          <span class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <span>ההודעה</span>
+        </h2>
+        <div class="params-box">
+          <p class="params-label">פרמטרים זמינים - לחיצה מוסיפה אותם להודעה במקום הסמן:</p>
+          <div class="chips" id="param-chips">
+            <p class="chips-empty" id="chips-empty">העלו קובץ אנשי קשר כדי לראות כאן את הפרמטרים הזמינים</p>
+          </div>
+        </div>
+        <textarea id="message-textarea" rows="5" placeholder="לדוגמה: שלום {שם}, מזכירים לך את הפגישה..."></textarea>
+
+        <h3 class="sub-heading">תצוגה מקדימה</h3>
+        <p class="hint" id="preview-warning"></p>
+        <div class="table-wrap">
+          <table id="preview-table" hidden>
+            <thead><tr><th class="number">מספר</th><th>הודעה</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p class="empty-state" id="preview-empty">כאן תופיע תצוגה מקדימה של ההודעות ברגע שיהיו קובץ אנשי קשר וטקסט הודעה.</p>
+        </div>
+        <p class="hint" id="preview-count"></p>
+
+        <h3 class="sub-heading">שליחה</h3>
+        <div class="row">
+          <fieldset class="channel-picker">
+            <legend>ערוץ שליחה</legend>
+            <label class="radio-label"><input type="radio" name="channel" id="channel-sms" value="sms" checked /> SMS</label>
+            <label class="radio-label"><input type="radio" name="channel" id="channel-whatsapp" value="whatsapp" /> WhatsApp</label>
+            <label class="radio-label"><input type="radio" name="channel" id="channel-both" value="both" /> שניהם</label>
+          </fieldset>
+        </div>
+
+        <div class="row" id="whatsapp-fields" hidden>
+          <label>קידומת מדינה - ברירת מחדל (ללא +) <input type="text" id="country-code-input" value="972" style="width: 90px" /></label>
+          <label>
+            או לפי עמודה בקובץ (אופציונלי)
+            <select id="country-code-column-select"><option value="">ללא - תמיד קידומת ברירת המחדל</option></select>
+          </label>
+        </div>
+        <p class="banner" id="whatsapp-warning" hidden>
+          שליחה המונית מוואטסאפ אישי (לא API עסקי רשמי) נושאת סיכון לחסימה זמנית/קבועה של
+          המספר - בעיקר לרשימות גדולות או לאנשים שלא שמרו אותך כאיש קשר. מומלץ להתחיל בכמות
+          קטנה, להשאיר השהיה ארוכה בין הודעות, ולעקוב אחרי התוצאות.
+        </p>
+
+        <div class="row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="dry-run-checkbox" checked />
+            מצב בדיקה (Dry Run) - לא שולח בפועל, רק מדמה
+          </label>
+          <label>
+            השהיה בין הודעות (שניות)
+            <input type="number" id="delay-input" value="4" min="1" step="1" />
+          </label>
+        </div>
+
+        <details class="advanced">
+          <summary>הגדרות מתקדמות - קואורדינטות גיבוי ידניות לכפתור "שלח"</summary>
+          <p class="hint">
+            המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציה
+            שנבחרה, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
+          </p>
+          <div class="row">
+            <label>X <input type="number" id="manual-tap-x" min="0" /></label>
+            <label>Y <input type="number" id="manual-tap-y" min="0" /></label>
+          </div>
+        </details>
+
+        <div class="row">
+          <button id="send-btn" type="button" class="primary">התחל שליחה</button>
+          <button id="cancel-btn" type="button" hidden>עצור</button>
+        </div>
+
+        <div id="progress-wrap" hidden>
+          <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+          <p class="hint" id="progress-text"></p>
+        </div>
 
         <div class="table-wrap">
-          <table id="schedules-table">
-            <thead>
-              <tr><th>תווית</th><th>תזמון</th><th>ריצה הבאה</th><th>ריצה אחרונה</th><th>פעיל</th><th></th></tr>
-            </thead>
+          <table id="results-table" hidden>
+            <thead><tr><th class="number">מספר</th><th>הודעה</th><th>ערוץ</th><th>סטטוס</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <footer class="app-footer">
-      <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת (מלבד תזמון, אם הגדרת אחד).</p>
-    </footer>
-  </main>
+      <!-- Page: schedules (Electron only) -->
+      <section class="card page" id="schedules-section" data-page hidden>
+        <h2>
+          <span class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <span>תזמונים ותזכורות</span>
+        </h2>
+        <p class="hint">
+          זמין רק בתוכנה להורדה (לא באתר בדפדפן) - כי צריך שהתוכנה תרוץ ברקע כדי לבדוק תזמונים
+          גם כשהחלון סגור. רשימת אנשי הקשר וההודעה שנטענו בעמוד "אנשי קשר" נשמרות מקומית
+          במחשב הזה בלבד, ומשמשות לכל תזמון חדש שתיצור.
+        </p>
+
+        <div id="schedules-setup">
+          <p class="hint">מגדירים פעם אחת: כתובת השרת (שם הדומיין שהעלית אליו את הפרויקט) והסיסמה.</p>
+          <div class="row">
+            <label>כתובת השרת <input type="text" id="sched-server-url" placeholder="https://example.com" /></label>
+            <label>סיסמה <input type="password" id="sched-password" /></label>
+          </div>
+          <div class="row">
+            <button id="sched-connect-btn" type="button" class="primary">התחבר / הגדר סיסמה</button>
+          </div>
+          <p class="status-line" id="sched-setup-status"></p>
+        </div>
+
+        <div id="schedules-main" hidden>
+          <p class="hint" id="sched-connected-as"></p>
+
+          <div class="row">
+            <label>תווית <input type="text" id="sched-label" placeholder="לדוגמה: תזכורת שבועית" /></label>
+            <label>
+              סוג תזמון
+              <select id="sched-type">
+                <option value="once">חד פעמי</option>
+                <option value="daily">כל יום</option>
+                <option value="weekly">כל שבוע</option>
+              </select>
+            </label>
+          </div>
+          <div class="row" id="sched-once-fields">
+            <label>תאריך ושעה <input type="datetime-local" id="sched-once-at" /></label>
+          </div>
+          <div class="row" id="sched-daily-fields" hidden>
+            <label>שעה <input type="time" id="sched-daily-time" value="09:00" /></label>
+          </div>
+          <div class="row" id="sched-weekly-fields" hidden>
+            <label>
+              יום בשבוע
+              <select id="sched-weekly-day">
+                <option value="0">ראשון</option>
+                <option value="1">שני</option>
+                <option value="2">שלישי</option>
+                <option value="3">רביעי</option>
+                <option value="4">חמישי</option>
+                <option value="5">שישי</option>
+                <option value="6">שבת</option>
+              </select>
+            </label>
+            <label>שעה <input type="time" id="sched-weekly-time" value="09:00" /></label>
+          </div>
+          <div class="row">
+            <button id="sched-create-btn" type="button" class="primary">
+              צור תזמון מהקובץ וההודעה שנטענו
+            </button>
+          </div>
+          <p class="status-line" id="sched-create-status"></p>
+
+          <div class="table-wrap">
+            <table id="schedules-table">
+              <thead>
+                <tr><th>תווית</th><th>תזמון</th><th>ריצה הבאה</th><th>ריצה אחרונה</th><th>פעיל</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
   <aside class="drawer" id="usb-guide-drawer" aria-label="מדריך הפעלת ניפוי USB" hidden>
