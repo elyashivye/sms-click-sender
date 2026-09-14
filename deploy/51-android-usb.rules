@@ -1,0 +1,8 @@
+# Example udev rule so adb can access the phone over USB without root.
+# 1. Find the phone's USB vendor id:  lsusb   (look for the phone's manufacturer line, e.g. "ID 18d1:4ee7 Google Inc.")
+# 2. Put the vendor id (the part before the colon) below.
+# 3. Copy this file to /etc/udev/rules.d/51-android-usb.rules
+# 4. sudo udevadm control --reload-rules && sudo udevadm trigger
+# 5. Unplug and replug the phone.
+
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0666", GROUP="plugdev"
