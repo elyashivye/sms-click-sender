@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-0_Dlmumv.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CH5DfHg1.css">
+  <script type="module" crossorigin src="./assets/index-BwCTKR3O.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-1uKnqNqE.css">
 </head>
 <body>
   <header class="app-header">
@@ -142,6 +142,23 @@
         <span>שליחה</span>
       </h2>
       <div class="row">
+        <fieldset class="channel-picker">
+          <legend>ערוץ שליחה</legend>
+          <label class="radio-label"><input type="radio" name="channel" id="channel-sms" value="sms" checked /> SMS</label>
+          <label class="radio-label"><input type="radio" name="channel" id="channel-whatsapp" value="whatsapp" /> WhatsApp</label>
+        </fieldset>
+      </div>
+
+      <div class="row" id="whatsapp-fields" hidden>
+        <label>קידומת מדינה (ללא +) <input type="text" id="country-code-input" value="972" style="width: 90px" /></label>
+      </div>
+      <p class="banner" id="whatsapp-warning" hidden>
+        שליחה המונית מוואטסאפ אישי (לא API עסקי רשמי) נושאת סיכון לחסימה זמנית/קבועה של
+        המספר - בעיקר לרשימות גדולות או לאנשים שלא שמרו אותך כאיש קשר. מומלץ להתחיל בכמות
+        קטנה, להשאיר השהיה ארוכה בין הודעות, ולעקוב אחרי התוצאות.
+      </p>
+
+      <div class="row">
         <label class="checkbox-label">
           <input type="checkbox" id="dry-run-checkbox" checked />
           מצב בדיקה (Dry Run) - לא שולח בפועל, רק מדמה
@@ -155,8 +172,8 @@
       <details class="advanced">
         <summary>הגדרות מתקדמות - קואורדינטות גיבוי ידניות לכפתור "שלח"</summary>
         <p class="hint">
-          המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציית ה-SMS
-          שלך, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
+          המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציה
+          שנבחרה, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
         </p>
         <div class="row">
           <label>X <input type="number" id="manual-tap-x" min="0" /></label>

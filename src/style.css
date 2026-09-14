@@ -181,6 +181,32 @@ label {
   color: var(--text);
 }
 
+.channel-picker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0;
+}
+
+.channel-picker legend {
+  padding: 0 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.radio-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+
 input[type="text"],
 input[type="password"],
 input[type="number"],

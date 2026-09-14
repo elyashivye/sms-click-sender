@@ -140,6 +140,23 @@
         <span>שליחה</span>
       </h2>
       <div class="row">
+        <fieldset class="channel-picker">
+          <legend>ערוץ שליחה</legend>
+          <label class="radio-label"><input type="radio" name="channel" id="channel-sms" value="sms" checked /> SMS</label>
+          <label class="radio-label"><input type="radio" name="channel" id="channel-whatsapp" value="whatsapp" /> WhatsApp</label>
+        </fieldset>
+      </div>
+
+      <div class="row" id="whatsapp-fields" hidden>
+        <label>קידומת מדינה (ללא +) <input type="text" id="country-code-input" value="972" style="width: 90px" /></label>
+      </div>
+      <p class="banner" id="whatsapp-warning" hidden>
+        שליחה המונית מוואטסאפ אישי (לא API עסקי רשמי) נושאת סיכון לחסימה זמנית/קבועה של
+        המספר - בעיקר לרשימות גדולות או לאנשים שלא שמרו אותך כאיש קשר. מומלץ להתחיל בכמות
+        קטנה, להשאיר השהיה ארוכה בין הודעות, ולעקוב אחרי התוצאות.
+      </p>
+
+      <div class="row">
         <label class="checkbox-label">
           <input type="checkbox" id="dry-run-checkbox" checked />
           מצב בדיקה (Dry Run) - לא שולח בפועל, רק מדמה
@@ -153,8 +170,8 @@
       <details class="advanced">
         <summary>הגדרות מתקדמות - קואורדינטות גיבוי ידניות לכפתור "שלח"</summary>
         <p class="hint">
-          המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציית ה-SMS
-          שלך, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
+          המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציה
+          שנבחרה, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
         </p>
         <div class="row">
           <label>X <input type="number" id="manual-tap-x" min="0" /></label>

@@ -1,14 +1,26 @@
-// Runs a batch of personalized SMS sends and reports progress via a simple
-// subscribe callback (no server/polling needed - everything runs in-tab).
+// Runs a batch of personalized sends (SMS or WhatsApp) and reports
+// progress via a simple subscribe callback (no server/polling needed -
+// everything runs in-tab).
 
-import { AdbError, sendSms } from "./adb-client.js";
+import { AdbError, sendMessage } from "./adb-client.js";
 import { normalizePhone } from "./excel.js";
+import { toWhatsAppNumber } from "./phone.js";
 import { render } from "./templating.js";
 
 const DEFAULT_DELAY_SECONDS = 4;
+const DEFAULT_COUNTRY_CODE = "972";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// A little randomness so the gap between sends isn't a robotically exact
+// interval every time - mainly relevant for WhatsApp, whose anti-spam
+// systems watch for that kind of uniform pattern.
+function jitteredDelayMs(seconds) {
+  const base = Math.max(seconds, 0) * 1000;
+  const jitter = base * 0.2 * (Math.random() * 2 - 1);
+  return Math.max(500, Math.round(base + jitter));
 }
 
 export class SendJob {
@@ -50,7 +62,14 @@ export class SendJob {
     this.status = "running";
     this._notify();
 
-    const { adb, dryRun = false, delaySeconds = DEFAULT_DELAY_SECONDS, manualTap = null } = this.config;
+    const {
+      adb,
+      channel = "sms",
+      countryCode = DEFAULT_COUNTRY_CODE,
+      dryRun = false,
+      delaySeconds = DEFAULT_DELAY_SECONDS,
+      manualTap = null,
+    } = this.config;
 
     for (const row of this.rows) {
       if (this.cancelRequested) {
@@ -60,7 +79,8 @@ export class SendJob {
       }
 
       const message = render(this.template, row);
-      const number = normalizePhone(row[this.phoneColumn]);
+      const rawNumber = row[this.phoneColumn];
+      const number = channel === "whatsapp" ? toWhatsAppNumber(rawNumber, countryCode) : normalizePhone(rawNumber);
       const entry = { number, message };
 
       if (!number) {
@@ -71,7 +91,7 @@ export class SendJob {
         entry.dryRun = true;
       } else {
         try {
-          await sendSms(adb, number, message, manualTap);
+          await sendMessage(adb, channel, number, message, manualTap);
           entry.ok = true;
         } catch (err) {
           entry.ok = false;
@@ -83,7 +103,7 @@ export class SendJob {
       this._notify();
 
       if (!dryRun && !this.cancelRequested) {
-        await sleep(delaySeconds * 1000);
+        await sleep(jitteredDelayMs(delaySeconds));
       }
     }
 

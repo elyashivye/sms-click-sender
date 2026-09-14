@@ -110,14 +110,36 @@ export function tap(adb, x, y) {
   return shellText(adb, `input tap ${Math.round(x)} ${Math.round(y)}`);
 }
 
-export function openCompose(adb, number, text) {
-  const uri = "sms:" + number;
-  const cmd =
-    "am start -a android.intent.action.SENDTO " +
-    `-d ${escapeArg(uri)} ` +
-    `--es sms_body ${escapeArg(text)}`;
-  return shellText(adb, cmd);
-}
+// Per-channel "open the compose screen with number+text already filled in".
+// Everything after that (finding & tapping Send) is identical regardless
+// of channel, so only this part differs between SMS and WhatsApp.
+const CHANNELS = {
+  sms: {
+    openCompose(adb, number, text) {
+      const uri = "sms:" + number;
+      const cmd =
+        "am start -a android.intent.action.SENDTO " +
+        `-d ${escapeArg(uri)} ` +
+        `--es sms_body ${escapeArg(text)}`;
+      return shellText(adb, cmd);
+    },
+    notFoundHint:
+      "לא נמצא כפתור 'שלח' על המסך אוטומטית. ודא שהמכשיר לא נעול ושמסך כתיבת ה-SMS " +
+      "נפתח בפועל, או הגדר קואורדינטות גיבוי ידניות.",
+  },
+  whatsapp: {
+    // number here must already be in full international format with no
+    // "+" (see phone.js) - that's what WhatsApp's click-to-chat link needs.
+    openCompose(adb, number, text) {
+      const uri = `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+      const cmd = `am start -a android.intent.action.VIEW -d ${escapeArg(uri)}`;
+      return shellText(adb, cmd);
+    },
+    notFoundHint:
+      "לא נמצא כפתור 'שלח' על המסך אוטומטית. ייתכן שלאיש הקשר הזה אין וואטסאפ, " +
+      "שהמכשיר נעול, או שמסך הצ'אט לא נפתח - אפשר גם להגדיר קואורדינטות גיבוי ידניות.",
+  },
+};
 
 export async function dumpUi(adb) {
   await shellText(adb, "uiautomator dump /sdcard/window_dump.xml");
@@ -171,11 +193,17 @@ export function findSendButton(xmlText) {
   return boundsCenter(bestNode.getAttribute("bounds"));
 }
 
-// Opens the compose screen for number/text and taps Send.
-// manualTap: optional [x, y] fallback used only if the send button can't be
-// located automatically (e.g. an unusual SMS app layout). Throws AdbError.
-export async function sendSms(adb, number, text, manualTap = null) {
-  await openCompose(adb, number, text);
+// Opens the compose screen for number/text on the given channel ("sms" or
+// "whatsapp") and taps Send. manualTap: optional [x, y] fallback used only
+// if the send button can't be located automatically (e.g. an unusual app
+// layout). Throws AdbError - for WhatsApp, a "button not found" failure
+// commonly just means that contact doesn't have WhatsApp (there's no way
+// to check that without attempting to open the chat - see the hint text).
+export async function sendMessage(adb, channel, number, text, manualTap = null) {
+  const impl = CHANNELS[channel];
+  if (!impl) throw new AdbError(`ערוץ שליחה לא מוכר: ${channel}`);
+
+  await impl.openCompose(adb, number, text);
   await sleep(WAIT_AFTER_OPEN_MS);
 
   let point = findSendButton(await dumpUi(adb));
@@ -191,10 +219,7 @@ export async function sendSms(adb, number, text, manualTap = null) {
 
   if (!point) {
     await goHome(adb);
-    throw new AdbError(
-      "לא נמצא כפתור 'שלח' על המסך אוטומטית. ודא שהמכשיר לא נעול ושמסך כתיבת ה-SMS " +
-        "נפתח בפועל, או הגדר קואורדינטות גיבוי ידניות."
-    );
+    throw new AdbError(impl.notFoundHint);
   }
 
   await tap(adb, point[0], point[1]);

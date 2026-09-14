@@ -177,10 +177,16 @@ function refreshPreview() {
 
 // ---------- Step 5: send ----------
 
+function currentChannel() {
+  return document.querySelector('input[name="channel"]:checked')?.value || "sms";
+}
+
 function currentSendConfig() {
   return {
     template: el("message-textarea").value,
     phoneColumn: el("phone-column-select").value || state.phoneColumn,
+    channel: currentChannel(),
+    countryCode: el("country-code-input").value.trim() || "972",
     delaySeconds: Number(el("delay-input").value) || 4,
     manualTap:
       el("manual-tap-x").value && el("manual-tap-y").value
@@ -190,8 +196,9 @@ function currentSendConfig() {
 }
 
 async function handleSend() {
-  const { template, phoneColumn, delaySeconds, manualTap } = currentSendConfig();
+  const { template, phoneColumn, channel, countryCode, delaySeconds, manualTap } = currentSendConfig();
   const dryRun = el("dry-run-checkbox").checked;
+  const channelLabel = channel === "whatsapp" ? "WhatsApp" : "SMS";
 
   if (!state.rows.length) {
     alert("יש להעלות קובץ אנשי קשר קודם.");
@@ -205,12 +212,14 @@ async function handleSend() {
     alert("יש להתחבר לטלפון לפני שליחה בפועל (או להשאיר את מצב הבדיקה מסומן).");
     return;
   }
-  if (!dryRun && !confirm("פעולה זו תשלח הודעות SMS אמיתיות מהטלפון המחובר. להמשיך?")) {
+  if (!dryRun && !confirm(`פעולה זו תשלח הודעות ${channelLabel} אמיתיות מהטלפון המחובר. להמשיך?`)) {
     return;
   }
 
   const job = new SendJob(state.rows, template, phoneColumn, {
     adb: state.adb,
+    channel,
+    countryCode,
     dryRun,
     delaySeconds,
     manualTap,
@@ -375,7 +384,7 @@ async function refreshSchedulesList() {
 async function handleCreateSchedule() {
   const statusEl = el("sched-create-status");
   const label = el("sched-label").value.trim();
-  const { template, phoneColumn, delaySeconds, manualTap } = currentSendConfig();
+  const { template, phoneColumn, channel, countryCode, delaySeconds, manualTap } = currentSendConfig();
 
   if (!label) return void (statusEl.textContent = "יש להזין תווית.");
   if (!state.rows.length) return void (statusEl.textContent = "יש להעלות קובץ אנשי קשר קודם (בשלב 2 למעלה).");
@@ -399,6 +408,8 @@ async function handleCreateSchedule() {
       rows: state.rows,
       template,
       phoneColumn,
+      channel,
+      countryCode,
       delaySeconds,
       manualTap,
     });
@@ -424,6 +435,8 @@ async function handleRunJob({ requestId, scheduleId, jobData }) {
 
   const job = new SendJob(jobData.rows, jobData.template, jobData.phoneColumn, {
     adb,
+    channel: jobData.channel,
+    countryCode: jobData.countryCode,
     dryRun: false,
     delaySeconds: jobData.delaySeconds,
     manualTap: jobData.manualTap,
@@ -519,6 +532,34 @@ function setupUsbGuideDrawer() {
   });
 }
 
+// ---------- channel picker (SMS / WhatsApp) ----------
+
+const SMS_DEFAULT_DELAY = 4;
+const WHATSAPP_DEFAULT_DELAY = 20;
+
+function setupChannelPicker() {
+  const whatsappFields = el("whatsapp-fields");
+  const whatsappWarning = el("whatsapp-warning");
+  const delayInput = el("delay-input");
+
+  document.querySelectorAll('input[name="channel"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const isWhatsApp = currentChannel() === "whatsapp";
+      whatsappFields.hidden = !isWhatsApp;
+      whatsappWarning.hidden = !isWhatsApp;
+
+      // Only nudge the delay if it's still at the other channel's default -
+      // never overwrite a value the user deliberately set.
+      const currentDelay = Number(delayInput.value);
+      if (isWhatsApp && currentDelay === SMS_DEFAULT_DELAY) {
+        delayInput.value = WHATSAPP_DEFAULT_DELAY;
+      } else if (!isWhatsApp && currentDelay === WHATSAPP_DEFAULT_DELAY) {
+        delayInput.value = SMS_DEFAULT_DELAY;
+      }
+    });
+  });
+}
+
 // ---------- wiring ----------
 
 if (!isWebUsbSupported()) {
@@ -537,6 +578,7 @@ el("cancel-btn").addEventListener("click", handleCancel);
 
 setupStepper();
 setupUsbGuideDrawer();
+setupChannelPicker();
 updateStepper();
 
 if (isElectron()) {
