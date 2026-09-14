@@ -109,8 +109,82 @@
       </div>
     </section>
 
+    <!-- Step 6: schedules (Electron only) -->
+    <section class="card" id="schedules-section" hidden>
+      <h2>6. תזמונים ותזכורות</h2>
+      <p class="hint">
+        זמין רק בתוכנה להורדה (לא באתר בדפדפן) - כי צריך שהתוכנה תרוץ ברקע כדי לבדוק תזמונים
+        גם כשהחלון סגור. רשימת אנשי הקשר וההודעה שנטענו למעלה נשמרות מקומית במחשב הזה בלבד,
+        ומשמשות לכל תזמון חדש שתיצור.
+      </p>
+
+      <div id="schedules-setup">
+        <p class="hint">מגדירים פעם אחת: כתובת השרת (שם הדומיין שהעלית אליו את הפרויקט) והסיסמה.</p>
+        <div class="row">
+          <label>כתובת השרת <input type="text" id="sched-server-url" placeholder="https://example.com" /></label>
+          <label>סיסמה <input type="password" id="sched-password" /></label>
+        </div>
+        <div class="row">
+          <button id="sched-connect-btn" type="button" class="primary">התחבר / הגדר סיסמה</button>
+        </div>
+        <p class="hint" id="sched-setup-status"></p>
+      </div>
+
+      <div id="schedules-main" hidden>
+        <p class="hint" id="sched-connected-as"></p>
+
+        <div class="row">
+          <label>תווית <input type="text" id="sched-label" placeholder="לדוגמה: תזכורת שבועית" /></label>
+          <label>
+            סוג תזמון
+            <select id="sched-type">
+              <option value="once">חד פעמי</option>
+              <option value="daily">כל יום</option>
+              <option value="weekly">כל שבוע</option>
+            </select>
+          </label>
+        </div>
+        <div class="row" id="sched-once-fields">
+          <label>תאריך ושעה <input type="datetime-local" id="sched-once-at" /></label>
+        </div>
+        <div class="row" id="sched-daily-fields" hidden>
+          <label>שעה <input type="time" id="sched-daily-time" value="09:00" /></label>
+        </div>
+        <div class="row" id="sched-weekly-fields" hidden>
+          <label>
+            יום בשבוע
+            <select id="sched-weekly-day">
+              <option value="0">ראשון</option>
+              <option value="1">שני</option>
+              <option value="2">שלישי</option>
+              <option value="3">רביעי</option>
+              <option value="4">חמישי</option>
+              <option value="5">שישי</option>
+              <option value="6">שבת</option>
+            </select>
+          </label>
+          <label>שעה <input type="time" id="sched-weekly-time" value="09:00" /></label>
+        </div>
+        <div class="row">
+          <button id="sched-create-btn" type="button" class="primary">
+            צור תזמון מהקובץ וההודעה שלמעלה
+          </button>
+        </div>
+        <p class="hint" id="sched-create-status"></p>
+
+        <div class="table-wrap">
+          <table id="schedules-table">
+            <thead>
+              <tr><th>תווית</th><th>תזמון</th><th>ריצה הבאה</th><th>ריצה אחרונה</th><th>פעיל</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <footer class="app-footer">
-      <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת.</p>
+      <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת (מלבד תזמון, אם הגדרת אחד).</p>
     </footer>
   </main>
 

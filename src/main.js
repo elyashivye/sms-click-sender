@@ -1,7 +1,8 @@
 import "./style.css";
-import { connect, isWebUsbSupported } from "./lib/adb-client.js";
+import { connect, isWebUsbSupported, reconnect } from "./lib/adb-client.js";
 import { guessPhoneColumn, parseContactsFile } from "./lib/excel.js";
 import { SendJob } from "./lib/sender.js";
+import * as schedulesApi from "./lib/schedules-client.js";
 import { render, unknownPlaceholders } from "./lib/templating.js";
 
 const state = {
@@ -10,9 +11,11 @@ const state = {
   rows: [],
   phoneColumn: null,
   job: null,
+  serverConfig: null, // { url, password } - only used in Electron
 };
 
 const el = (id) => document.getElementById(id);
+const isElectron = () => typeof window.smsSender !== "undefined";
 
 function escapeHtml(value) {
   return String(value)
@@ -23,24 +26,27 @@ function escapeHtml(value) {
 
 // ---------- Step 1: device ----------
 
+function setConnectedUi(adb) {
+  state.adb = adb;
+  el("device-status").textContent = `מחובר: ${adb.serial}`;
+  el("connect-btn").hidden = true;
+  el("disconnect-btn").hidden = false;
+
+  adb.disconnected.then(() => {
+    if (state.adb === adb) {
+      state.adb = null;
+      el("device-status").textContent = "המכשיר התנתק.";
+      el("connect-btn").hidden = false;
+      el("disconnect-btn").hidden = true;
+    }
+  });
+}
+
 async function handleConnect() {
   const statusEl = el("device-status");
   statusEl.textContent = "מתחבר... אשרו את הבקשה בדפדפן, ואת בקשת ניפוי ה-USB במסך הטלפון אם תופיע.";
   try {
-    const adb = await connect();
-    state.adb = adb;
-    statusEl.textContent = `מחובר: ${adb.serial}`;
-    el("connect-btn").hidden = true;
-    el("disconnect-btn").hidden = false;
-
-    adb.disconnected.then(() => {
-      if (state.adb === adb) {
-        state.adb = null;
-        statusEl.textContent = "המכשיר התנתק.";
-        el("connect-btn").hidden = false;
-        el("disconnect-btn").hidden = true;
-      }
-    });
+    setConnectedUi(await connect());
   } catch (err) {
     statusEl.textContent = "שגיאה: " + (err.message || err);
   }
@@ -54,6 +60,11 @@ async function handleDisconnect() {
   el("device-status").textContent = "מנותק.";
   el("connect-btn").hidden = false;
   el("disconnect-btn").hidden = true;
+}
+
+async function trySilentReconnect() {
+  const adb = await reconnect();
+  if (adb) setConnectedUi(adb);
 }
 
 // ---------- Step 2: upload ----------
@@ -153,13 +164,21 @@ function refreshPreview() {
 
 // ---------- Step 5: send ----------
 
+function currentSendConfig() {
+  return {
+    template: el("message-textarea").value,
+    phoneColumn: el("phone-column-select").value || state.phoneColumn,
+    delaySeconds: Number(el("delay-input").value) || 4,
+    manualTap:
+      el("manual-tap-x").value && el("manual-tap-y").value
+        ? [Number(el("manual-tap-x").value), Number(el("manual-tap-y").value)]
+        : null,
+  };
+}
+
 async function handleSend() {
-  const template = el("message-textarea").value;
-  const phoneColumn = el("phone-column-select").value || state.phoneColumn;
+  const { template, phoneColumn, delaySeconds, manualTap } = currentSendConfig();
   const dryRun = el("dry-run-checkbox").checked;
-  const delaySeconds = Number(el("delay-input").value) || 4;
-  const manualX = el("manual-tap-x").value;
-  const manualY = el("manual-tap-y").value;
 
   if (!state.rows.length) {
     alert("יש להעלות קובץ אנשי קשר קודם.");
@@ -181,7 +200,7 @@ async function handleSend() {
     adb: state.adb,
     dryRun,
     delaySeconds,
-    manualTap: manualX && manualY ? [Number(manualX), Number(manualY)] : null,
+    manualTap,
   });
   state.job = job;
 
@@ -222,6 +241,193 @@ function handleCancel() {
   state.job?.cancel();
 }
 
+// ---------- Step 6: schedules (Electron only) ----------
+
+const RECURRENCE_LABELS = { once: "חד פעמי", daily: "כל יום", weekday: "", weekly: "כל שבוע" };
+const WEEKDAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+
+function describeRecurrence(recurrence) {
+  if (recurrence.type === "once") return `${RECURRENCE_LABELS.once} - ${new Date(recurrence.at).toLocaleString("he-IL")}`;
+  if (recurrence.type === "daily") return `${RECURRENCE_LABELS.daily} ב-${recurrence.time}`;
+  if (recurrence.type === "weekly") return `${RECURRENCE_LABELS.weekly}, ${WEEKDAY_NAMES[recurrence.weekday]} ב-${recurrence.time}`;
+  return "";
+}
+
+function formatDate(iso) {
+  return iso ? new Date(iso).toLocaleString("he-IL") : "-";
+}
+
+function readRecurrenceFromForm() {
+  const type = el("sched-type").value;
+  if (type === "once") {
+    const value = el("sched-once-at").value;
+    if (!value) throw new Error("יש לבחור תאריך ושעה");
+    return { type: "once", at: new Date(value).toISOString() };
+  }
+  if (type === "daily") {
+    return { type: "daily", time: el("sched-daily-time").value };
+  }
+  return { type: "weekly", time: el("sched-weekly-time").value, weekday: Number(el("sched-weekly-day").value) };
+}
+
+function updateScheduleTypeFields() {
+  const type = el("sched-type").value;
+  el("sched-once-fields").hidden = type !== "once";
+  el("sched-daily-fields").hidden = type !== "daily";
+  el("sched-weekly-fields").hidden = type !== "weekly";
+}
+
+async function loadServerConfig() {
+  state.serverConfig = await window.smsSender.getServerConfig();
+  if (state.serverConfig) {
+    el("sched-server-url").value = state.serverConfig.url;
+    await showSchedulesMain();
+  }
+}
+
+async function handleSchedConnect() {
+  const statusEl = el("sched-setup-status");
+  const url = el("sched-server-url").value.trim().replace(/\/+$/, "");
+  const password = el("sched-password").value;
+
+  if (!url || !password) {
+    statusEl.textContent = "יש למלא כתובת שרת וסיסמה.";
+    return;
+  }
+
+  statusEl.textContent = "בודק...";
+  try {
+    const { configured } = await schedulesApi.getSetupStatus(url);
+    if (!configured) {
+      await schedulesApi.setupPassword(url, password);
+    } else {
+      await schedulesApi.login(url, password);
+    }
+    state.serverConfig = await window.smsSender.setServerConfig({ url, password });
+    statusEl.textContent = "";
+    await showSchedulesMain();
+  } catch (err) {
+    statusEl.textContent = "שגיאה: " + (err.message || err);
+  }
+}
+
+async function showSchedulesMain() {
+  el("schedules-setup").hidden = true;
+  el("schedules-main").hidden = false;
+  el("sched-connected-as").textContent = `מחובר לשרת: ${state.serverConfig.url}`;
+  await refreshSchedulesList();
+}
+
+async function refreshSchedulesList() {
+  const tbody = document.querySelector("#schedules-table tbody");
+  try {
+    const schedules = await schedulesApi.listSchedules(state.serverConfig.url, state.serverConfig.password);
+    tbody.innerHTML = schedules
+      .map(
+        (s) => `
+        <tr>
+          <td>${escapeHtml(s.label)}</td>
+          <td>${escapeHtml(describeRecurrence(s.recurrence))}</td>
+          <td>${escapeHtml(formatDate(s.nextRunAt))}</td>
+          <td>${escapeHtml(formatDate(s.lastRunAt))}${s.lastStatus ? ` (${s.lastStatus === "success" ? "הצלחה" : "כישלון"})` : ""}</td>
+          <td><input type="checkbox" data-toggle-id="${s.id}" ${s.enabled ? "checked" : ""} /></td>
+          <td><button type="button" data-delete-id="${s.id}">מחק</button></td>
+        </tr>`
+      )
+      .join("");
+
+    tbody.querySelectorAll("[data-toggle-id]").forEach((checkbox) => {
+      checkbox.addEventListener("change", async () => {
+        await schedulesApi.updateSchedule(state.serverConfig.url, state.serverConfig.password, checkbox.dataset.toggleId, {
+          enabled: checkbox.checked,
+        });
+      });
+    });
+    tbody.querySelectorAll("[data-delete-id]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const id = button.dataset.deleteId;
+        if (!confirm("למחוק את התזמון הזה?")) return;
+        await schedulesApi.deleteSchedule(state.serverConfig.url, state.serverConfig.password, id);
+        await window.smsSender.deleteLocalJob(id);
+        await refreshSchedulesList();
+      });
+    });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6">שגיאה בטעינת תזמונים: ${escapeHtml(err.message || err)}</td></tr>`;
+  }
+}
+
+async function handleCreateSchedule() {
+  const statusEl = el("sched-create-status");
+  const label = el("sched-label").value.trim();
+  const { template, phoneColumn, delaySeconds, manualTap } = currentSendConfig();
+
+  if (!label) return void (statusEl.textContent = "יש להזין תווית.");
+  if (!state.rows.length) return void (statusEl.textContent = "יש להעלות קובץ אנשי קשר קודם (בשלב 2 למעלה).");
+  if (!template.trim()) return void (statusEl.textContent = "יש להזין הודעה קודם (בשלב 3 למעלה).");
+
+  let recurrence;
+  try {
+    recurrence = readRecurrenceFromForm();
+  } catch (err) {
+    statusEl.textContent = err.message;
+    return;
+  }
+
+  statusEl.textContent = "יוצר תזמון...";
+  try {
+    const schedule = await schedulesApi.createSchedule(state.serverConfig.url, state.serverConfig.password, {
+      label,
+      recurrence,
+    });
+    await window.smsSender.saveLocalJob(schedule.id, {
+      rows: state.rows,
+      template,
+      phoneColumn,
+      delaySeconds,
+      manualTap,
+    });
+    statusEl.textContent = "התזמון נוצר.";
+    el("sched-label").value = "";
+    await refreshSchedulesList();
+  } catch (err) {
+    statusEl.textContent = "שגיאה: " + (err.message || err);
+  }
+}
+
+async function handleRunJob({ requestId, scheduleId, jobData }) {
+  let adb = state.adb;
+  if (!adb) {
+    adb = await reconnect();
+    if (adb) setConnectedUi(adb);
+  }
+
+  if (!adb) {
+    window.smsSender.reportJobResult(requestId, { ok: false, error: "הטלפון לא מחובר במחשב הזה" });
+    return;
+  }
+
+  const job = new SendJob(jobData.rows, jobData.template, jobData.phoneColumn, {
+    adb,
+    dryRun: false,
+    delaySeconds: jobData.delaySeconds,
+    manualTap: jobData.manualTap,
+  });
+  job.onUpdate(renderJobStatus);
+  el("progress-wrap").hidden = false;
+  el("results-table").hidden = false;
+
+  await job.run();
+
+  const sentCount = job.results.filter((r) => r.ok).length;
+  const failed = job.results.filter((r) => !r.ok);
+  window.smsSender.reportJobResult(requestId, {
+    ok: failed.length === 0,
+    sentCount,
+    error: failed.length ? `${failed.length} הודעות נכשלו (מתוך ${job.results.length})` : undefined,
+  });
+}
+
 // ---------- wiring ----------
 
 if (!isWebUsbSupported()) {
@@ -236,3 +442,14 @@ el("phone-column-select").addEventListener("change", refreshPreview);
 el("message-textarea").addEventListener("input", refreshPreview);
 el("send-btn").addEventListener("click", handleSend);
 el("cancel-btn").addEventListener("click", handleCancel);
+
+if (isElectron()) {
+  el("schedules-section").hidden = false;
+  el("sched-type").addEventListener("change", updateScheduleTypeFields);
+  el("sched-connect-btn").addEventListener("click", handleSchedConnect);
+  el("sched-create-btn").addEventListener("click", handleCreateSchedule);
+  updateScheduleTypeFields();
+  window.smsSender.onRunJob(handleRunJob);
+  loadServerConfig();
+  trySilentReconnect();
+}

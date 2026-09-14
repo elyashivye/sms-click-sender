@@ -35,23 +35,7 @@ async function shellText(adb, command) {
   }
 }
 
-// Opens the browser's device picker and completes the ADB auth handshake.
-// The phone will show "Allow USB debugging?" the first time - that tap on
-// the phone screen is a required Android security step and can't be
-// automated. Returns a ready-to-use Adb instance.
-export async function connect() {
-  if (!isWebUsbSupported()) {
-    throw new AdbError(
-      "הדפדפן הזה לא תומך ב-WebUSB. יש להשתמש ב-Chrome, Edge או Opera (לא Firefox/Safari)."
-    );
-  }
-
-  const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
-  const device = await manager.requestDevice();
-  if (!device) {
-    throw new AdbError("לא נבחר מכשיר.");
-  }
-
+async function finishConnect(device) {
   let connection;
   try {
     connection = await device.connect();
@@ -73,6 +57,45 @@ export async function connect() {
   }
 
   return new Adb(transport);
+}
+
+// Opens the browser's device picker and completes the ADB auth handshake.
+// The phone will show "Allow USB debugging?" the first time - that tap on
+// the phone screen is a required Android security step and can't be
+// automated. Returns a ready-to-use Adb instance.
+export async function connect() {
+  if (!isWebUsbSupported()) {
+    throw new AdbError(
+      "הדפדפן הזה לא תומך ב-WebUSB. יש להשתמש ב-Chrome, Edge או Opera (לא Firefox/Safari)."
+    );
+  }
+
+  const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+  const device = await manager.requestDevice();
+  if (!device) {
+    throw new AdbError("לא נבחר מכשיר.");
+  }
+
+  return finishConnect(device);
+}
+
+// Silently reconnects to a phone that was already authorized in a previous
+// session - no device picker, no user gesture needed (browsers remember
+// WebUSB grants per origin+device; the Electron app auto-authorizes every
+// USB device, see electron/main.js). Used on startup so the background
+// scheduler has a chance to run without the user reopening the app and
+// clicking "Connect" first. Returns null instead of throwing if nothing is
+// available to reconnect to.
+export async function reconnect() {
+  if (!isWebUsbSupported()) return null;
+  try {
+    const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+    const [device] = await manager.getDevices();
+    if (!device) return null;
+    return await finishConnect(device);
+  } catch {
+    return null;
+  }
 }
 
 export function wakeScreen(adb) {
