@@ -1,6 +1,6 @@
 import "./style.css";
 import { connect, isWebUsbSupported, reconnect } from "./lib/adb-client.js";
-import { guessPhoneColumn, parseContactsFile } from "./lib/excel.js";
+import { downloadSampleFile, guessPhoneColumn, parseContactsFile } from "./lib/excel.js";
 import { SendJob } from "./lib/sender.js";
 import * as schedulesApi from "./lib/schedules-client.js";
 import { render, unknownPlaceholders } from "./lib/templating.js";
@@ -11,6 +11,7 @@ const state = {
   rows: [],
   phoneColumn: null,
   job: null,
+  hasSentOnce: false,
   serverConfig: null, // { url, password } - only used in Electron
 };
 
@@ -31,6 +32,7 @@ function setConnectedUi(adb) {
   el("device-status").textContent = `מחובר: ${adb.serial}`;
   el("connect-btn").hidden = true;
   el("disconnect-btn").hidden = false;
+  updateStepper();
 
   adb.disconnected.then(() => {
     if (state.adb === adb) {
@@ -38,6 +40,7 @@ function setConnectedUi(adb) {
       el("device-status").textContent = "המכשיר התנתק.";
       el("connect-btn").hidden = false;
       el("disconnect-btn").hidden = true;
+      updateStepper();
     }
   });
 }
@@ -60,6 +63,7 @@ async function handleDisconnect() {
   el("device-status").textContent = "מנותק.";
   el("connect-btn").hidden = false;
   el("disconnect-btn").hidden = true;
+  updateStepper();
 }
 
 async function trySilentReconnect() {
@@ -74,6 +78,7 @@ async function handleFileChange(event) {
   const statusEl = el("upload-status");
   if (!file) return;
 
+  el("file-drop-label").textContent = file.name;
   statusEl.textContent = "קורא קובץ...";
   try {
     const { headers, rows } = await parseContactsFile(file);
@@ -139,23 +144,31 @@ function refreshPreview() {
   const phoneColumn = el("phone-column-select").value || state.phoneColumn;
   const rows = state.rows;
 
-  const preview = rows.slice(0, 20).map((row) => ({
-    number: row[phoneColumn] || "",
-    message: render(template, row),
-  }));
+  const hasData = rows.length > 0;
+  el("preview-table").hidden = !hasData;
+  el("preview-empty").hidden = hasData;
 
-  const tbody = document.querySelector("#preview-table tbody");
-  tbody.innerHTML = preview
-    .map(
-      (row) =>
-        `<tr><td class="number">${escapeHtml(row.number)}</td><td>${escapeHtml(row.message)}</td></tr>`
-    )
-    .join("");
+  if (hasData) {
+    const preview = rows.slice(0, 20).map((row) => ({
+      number: row[phoneColumn] || "",
+      message: render(template, row),
+    }));
+
+    const tbody = document.querySelector("#preview-table tbody");
+    tbody.innerHTML = preview
+      .map(
+        (row) =>
+          `<tr><td class="number">${escapeHtml(row.number)}</td><td>${escapeHtml(row.message)}</td></tr>`
+      )
+      .join("");
+  }
 
   const unknown = unknownPlaceholders(template, state.headers);
   el("preview-warning").textContent = unknown.length
     ? `שים לב: פרמטרים לא מוכרים בהודעה: ${unknown.map((p) => `{${p}}`).join(", ")}`
     : "";
+
+  updateStepper();
 
   el("preview-count").textContent = rows.length
     ? `מוצגות עד 20 הודעות מתוך ${rows.length} אנשי קשר בקובץ.`
@@ -234,6 +247,8 @@ function renderJobStatus(snapshot) {
   if (snapshot.status === "done" || snapshot.status === "cancelled") {
     el("send-btn").disabled = false;
     el("cancel-btn").hidden = true;
+    if (snapshot.status === "done") state.hasSentOnce = true;
+    updateStepper();
   }
 }
 
@@ -428,6 +443,44 @@ async function handleRunJob({ requestId, scheduleId, jobData }) {
   });
 }
 
+// ---------- stepper (top nav: click-to-scroll, "done" + "active" states) ----------
+
+function setStepDone(sectionId, isDone) {
+  document.querySelector(`.step[data-goto="${sectionId}"]`)?.classList.toggle("done", isDone);
+}
+
+function updateStepper() {
+  setStepDone("device-section", !!state.adb);
+  setStepDone("upload-section", state.rows.length > 0);
+  setStepDone("message-section", el("message-textarea").value.trim().length > 0);
+  setStepDone("preview-section", state.rows.length > 0);
+  setStepDone("send-section", state.hasSentOnce);
+}
+
+function setupStepper() {
+  document.querySelectorAll(".step").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.getElementById(button.dataset.goto)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  const sections = [...document.querySelectorAll(".step")]
+    .map((button) => document.getElementById(button.dataset.goto))
+    .filter(Boolean);
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        document
+          .querySelector(`.step[data-goto="${entry.target.id}"]`)
+          ?.classList.toggle("active", entry.isIntersecting);
+      });
+    },
+    { rootMargin: "-40% 0px -50% 0px" }
+  );
+  sections.forEach((section) => observer.observe(section));
+}
+
 // ---------- wiring ----------
 
 if (!isWebUsbSupported()) {
@@ -438,10 +491,14 @@ if (!isWebUsbSupported()) {
 el("connect-btn").addEventListener("click", handleConnect);
 el("disconnect-btn").addEventListener("click", handleDisconnect);
 el("file-input").addEventListener("change", handleFileChange);
+el("sample-file-btn").addEventListener("click", downloadSampleFile);
 el("phone-column-select").addEventListener("change", refreshPreview);
 el("message-textarea").addEventListener("input", refreshPreview);
 el("send-btn").addEventListener("click", handleSend);
 el("cancel-btn").addEventListener("click", handleCancel);
+
+setupStepper();
+updateStepper();
 
 if (isElectron()) {
   el("schedules-section").hidden = false;

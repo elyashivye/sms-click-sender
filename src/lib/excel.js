@@ -86,3 +86,18 @@ export function normalizePhone(value) {
   if (value === null || value === undefined) return "";
   return String(value).replace(/[^\d+]/g, "");
 }
+
+// Triggers a browser download of a tiny example contacts file, so users
+// know exactly what format/columns are expected before making their own.
+export function downloadSampleFile() {
+  const rows = [
+    ["שם", "טלפון", "עיר"],
+    ["דוד כהן", "0501234567", "ירושלים"],
+    ["שרה לוי", "0521234567", "בני ברק"],
+    ["יוסף מזרחי", "0541234567", "אשדוד"],
+  ];
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "אנשי קשר");
+  XLSX.writeFile(workbook, "דוגמה-אנשי-קשר.xlsx");
+}

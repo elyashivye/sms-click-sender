@@ -4,12 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>שליחת SMS מהמחשב</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
   <header class="app-header">
-    <h1>שליחת SMS מהמחשב</h1>
-    <p class="subtitle">שליחת הודעה מותאמת אישית לרשימת אנשי קשר, ישירות מהדפדפן - דרך טלפון אנדרואיד המחובר בכבל</p>
+    <div class="brand">
+      <span class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      </span>
+      <div>
+        <h1>שליחת SMS מהמחשב</h1>
+        <p class="subtitle">הודעה מותאמת אישית לכל איש קשר, ישירות מהדפדפן - דרך הטלפון שמחובר בכבל</p>
+      </div>
+    </div>
   </header>
+
+  <nav class="stepper" id="stepper" aria-label="שלבים">
+    <button type="button" class="step" data-goto="device-section">
+      <span class="step-badge">1</span><span class="step-label">חיבור</span>
+    </button>
+    <button type="button" class="step" data-goto="upload-section">
+      <span class="step-badge">2</span><span class="step-label">קובץ</span>
+    </button>
+    <button type="button" class="step" data-goto="message-section">
+      <span class="step-badge">3</span><span class="step-label">הודעה</span>
+    </button>
+    <button type="button" class="step" data-goto="preview-section">
+      <span class="step-badge">4</span><span class="step-label">תצוגה</span>
+    </button>
+    <button type="button" class="step" data-goto="send-section">
+      <span class="step-badge">5</span><span class="step-label">שליחה</span>
+    </button>
+  </nav>
 
   <main>
     <div id="unsupported-banner" class="banner" hidden>
@@ -20,22 +48,41 @@
 
     <!-- Step 1: device -->
     <section class="card" id="device-section">
-      <h2>1. חיבור הטלפון</h2>
+      <h2>
+        <span class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        </span>
+        <span>חיבור הטלפון</span>
+      </h2>
       <p class="hint">חברו את הטלפון בכבל USB, ודאו שניפוי USB (USB Debugging) מופעל, ולחצו על הכפתור.</p>
       <div class="row">
         <button id="connect-btn" type="button" class="primary">התחבר לטלפון</button>
         <button id="disconnect-btn" type="button" hidden>נתק</button>
       </div>
-      <p class="hint" id="device-status"></p>
+      <p class="status-line" id="device-status"></p>
     </section>
 
     <!-- Step 2: upload contacts -->
     <section class="card" id="upload-section">
-      <h2>2. קובץ אנשי קשר (Excel / CSV)</h2>
-      <div class="row">
-        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" />
+      <h2>
+        <span class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </span>
+        <span>קובץ אנשי קשר</span>
+      </h2>
+      <p class="hint">קובץ Excel או CSV - כל עמודה בו (שם, טלפון, עיר, כל דבר) תהפוך לפרמטר זמין להודעה.</p>
+      <div class="row upload-row">
+        <label class="file-drop" for="file-input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="file-drop-label">בחרו קובץ xlsx / xls / csv</span>
+        </label>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden />
+        <button id="sample-file-btn" type="button" class="ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m6 9 6 6 6-6"/><path d="M19 21H5"/></svg>
+          קובץ לדוגמה
+        </button>
       </div>
-      <p class="hint" id="upload-status"></p>
+      <p class="status-line" id="upload-status"></p>
       <div class="row" id="phone-column-row" hidden>
         <label>
           עמודת מספר הטלפון
@@ -46,28 +93,48 @@
 
     <!-- Step 3: message -->
     <section class="card" id="message-section">
-      <h2>3. ההודעה</h2>
-      <p class="hint">לחיצה על פרמטר מוסיפה אותו להודעה במקום הסמן. כל עמודה בקובץ הופכת לפרמטר זמין.</p>
-      <div class="chips" id="param-chips"></div>
+      <h2>
+        <span class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <span>ההודעה</span>
+      </h2>
+      <div class="params-box">
+        <p class="params-label">פרמטרים זמינים - לחיצה מוסיפה אותם להודעה במקום הסמן:</p>
+        <div class="chips" id="param-chips">
+          <p class="chips-empty" id="chips-empty">העלו קובץ אנשי קשר למעלה כדי לראות כאן את הפרמטרים הזמינים</p>
+        </div>
+      </div>
       <textarea id="message-textarea" rows="5" placeholder="לדוגמה: שלום {שם}, מזכירים לך את הפגישה..."></textarea>
     </section>
 
     <!-- Step 4: preview -->
     <section class="card" id="preview-section">
-      <h2>4. תצוגה מקדימה</h2>
+      <h2>
+        <span class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+        <span>תצוגה מקדימה</span>
+      </h2>
       <p class="hint" id="preview-warning"></p>
       <div class="table-wrap">
-        <table id="preview-table">
+        <table id="preview-table" hidden>
           <thead><tr><th class="number">מספר</th><th>הודעה</th></tr></thead>
           <tbody></tbody>
         </table>
+        <p class="empty-state" id="preview-empty">כאן תופיע תצוגה מקדימה של ההודעות ברגע שיהיו קובץ אנשי קשר וטקסט הודעה.</p>
       </div>
       <p class="hint" id="preview-count"></p>
     </section>
 
     <!-- Step 5: send -->
     <section class="card" id="send-section">
-      <h2>5. שליחה</h2>
+      <h2>
+        <span class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </span>
+        <span>שליחה</span>
+      </h2>
       <div class="row">
         <label class="checkbox-label">
           <input type="checkbox" id="dry-run-checkbox" checked />
@@ -111,7 +178,12 @@
 
     <!-- Step 6: schedules (Electron only) -->
     <section class="card" id="schedules-section" hidden>
-      <h2>6. תזמונים ותזכורות</h2>
+      <h2>
+        <span class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <span>תזמונים ותזכורות</span>
+      </h2>
       <p class="hint">
         זמין רק בתוכנה להורדה (לא באתר בדפדפן) - כי צריך שהתוכנה תרוץ ברקע כדי לבדוק תזמונים
         גם כשהחלון סגור. רשימת אנשי הקשר וההודעה שנטענו למעלה נשמרות מקומית במחשב הזה בלבד,
@@ -127,7 +199,7 @@
         <div class="row">
           <button id="sched-connect-btn" type="button" class="primary">התחבר / הגדר סיסמה</button>
         </div>
-        <p class="hint" id="sched-setup-status"></p>
+        <p class="status-line" id="sched-setup-status"></p>
       </div>
 
       <div id="schedules-main" hidden>
@@ -170,7 +242,7 @@
             צור תזמון מהקובץ וההודעה שלמעלה
           </button>
         </div>
-        <p class="hint" id="sched-create-status"></p>
+        <p class="status-line" id="sched-create-status"></p>
 
         <div class="table-wrap">
           <table id="schedules-table">
