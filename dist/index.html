@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-DEeXKI5Z.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-z4MRMDev.css">
+  <script type="module" crossorigin src="./assets/index-0_Dlmumv.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CH5DfHg1.css">
 </head>
 <body>
   <header class="app-header">
@@ -57,6 +57,10 @@
         <span>חיבור הטלפון</span>
       </h2>
       <p class="hint">חברו את הטלפון בכבל USB, ודאו שניפוי USB (USB Debugging) מופעל, ולחצו על הכפתור.</p>
+      <button type="button" class="guide-link" id="usb-guide-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 1.7-2.4 3.4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        לא בטוחים איך מפעילים ניפוי USB? מדריך שלב-אחר-שלב
+      </button>
       <div class="row">
         <button id="connect-btn" type="button" class="primary">התחבר לטלפון</button>
         <button id="disconnect-btn" type="button" hidden>נתק</button>
@@ -261,6 +265,65 @@
       <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת (מלבד תזמון, אם הגדרת אחד).</p>
     </footer>
   </main>
+
+  <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+  <aside class="drawer" id="usb-guide-drawer" aria-label="מדריך הפעלת ניפוי USB" hidden>
+    <div class="drawer-header">
+      <h2>איך מפעילים ניפוי USB</h2>
+      <button type="button" class="drawer-close" id="drawer-close-btn" aria-label="סגור">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <ol class="guide-steps">
+        <li>
+          <span class="guide-num">1</span>
+          <div>פתחו את <strong>ההגדרות</strong> בטלפון.</div>
+        </li>
+        <li>
+          <span class="guide-num">2</span>
+          <div>גללו למטה ובחרו <strong>"אודות הטלפון"</strong> (או "מידע על המכשיר").</div>
+        </li>
+        <li>
+          <span class="guide-num">3</span>
+          <div>
+            מצאו <strong>"מספר build"</strong> (לרוב תחת "מידע תוכנה") ו<strong>לחצו עליו 7 פעמים ברצף</strong>.
+            תופיע הודעה שאתם עכשיו "מפתחים".
+          </div>
+        </li>
+        <li>
+          <span class="guide-num">4</span>
+          <div>
+            חזרו למסך ההגדרות הראשי - יופיע פריט חדש בשם <strong>"אפשרויות למפתחים"</strong>
+            (בדרך כלל תחת "הגדרות נוספות" או "מערכת").
+          </div>
+        </li>
+        <li>
+          <span class="guide-num">5</span>
+          <div>היכנסו ל"אפשרויות למפתחים" ומצאו את <strong>"ניפוי USB" (USB debugging)</strong> - הפעילו את המתג.</div>
+        </li>
+        <li>
+          <span class="guide-num">6</span>
+          <div>חברו את הטלפון למחשב עם כבל USB.</div>
+        </li>
+        <li>
+          <span class="guide-num">7</span>
+          <div>
+            על מסך הטלפון תופיע בקשה <strong>"לאפשר ניפוי USB?"</strong> - אשרו אותה, ואפשר לסמן
+            "אפשר תמיד ממחשב זה" כדי לא לחזור על זה בכל פעם.
+          </div>
+        </li>
+        <li>
+          <span class="guide-num">8</span>
+          <div>סגרו את המדריך ולחצו <strong>"התחבר לטלפון"</strong> למעלה.</div>
+        </li>
+      </ol>
+      <p class="guide-note">
+        השמות המדויקים יכולים להשתנות קצת בין יצרנים (סמסונג, שיאומי, פיקסל וכו') -
+        אבל התהליך הכללי זהה בכל טלפון אנדרואיד.
+      </p>
+    </div>
+  </aside>
 
 </body>
 </html>

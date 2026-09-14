@@ -481,6 +481,44 @@ function setupStepper() {
   sections.forEach((section) => observer.observe(section));
 }
 
+// ---------- USB debugging guide drawer ----------
+
+function setupUsbGuideDrawer() {
+  const drawer = el("usb-guide-drawer");
+  const backdrop = el("drawer-backdrop");
+
+  function openDrawer() {
+    drawer.hidden = false;
+    backdrop.hidden = false;
+    requestAnimationFrame(() => {
+      drawer.classList.add("open");
+      backdrop.classList.add("open");
+    });
+  }
+
+  function closeDrawer() {
+    if (drawer.hidden) return;
+    drawer.classList.remove("open");
+    backdrop.classList.remove("open");
+    const finish = () => {
+      drawer.hidden = true;
+      backdrop.hidden = true;
+    };
+    // Driven by the real transition finishing (not a guessed timer) so it
+    // can never desync from the CSS duration; the timeout is just a
+    // fallback in case transitionend doesn't fire for some reason.
+    drawer.addEventListener("transitionend", finish, { once: true });
+    setTimeout(finish, 350);
+  }
+
+  el("usb-guide-btn").addEventListener("click", openDrawer);
+  el("drawer-close-btn").addEventListener("click", closeDrawer);
+  backdrop.addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && drawer.classList.contains("open")) closeDrawer();
+  });
+}
+
 // ---------- wiring ----------
 
 if (!isWebUsbSupported()) {
@@ -498,6 +536,7 @@ el("send-btn").addEventListener("click", handleSend);
 el("cancel-btn").addEventListener("click", handleCancel);
 
 setupStepper();
+setupUsbGuideDrawer();
 updateStepper();
 
 if (isElectron()) {
