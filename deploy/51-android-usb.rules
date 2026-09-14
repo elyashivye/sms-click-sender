@@ -1,4 +1,5 @@
-# Example udev rule so adb can access the phone over USB without root.
+# Example udev rule so Chrome/Electron (WebUSB) can access the phone over
+# USB without root - no separate `adb` binary involved.
 # 1. Find the phone's USB vendor id:  lsusb   (look for the phone's manufacturer line, e.g. "ID 18d1:4ee7 Google Inc.")
 # 2. Put the vendor id (the part before the colon) below.
 # 3. Copy this file to /etc/udev/rules.d/51-android-usb.rules

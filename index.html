@@ -4,32 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>שליחת SMS מהמחשב</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
   <header class="app-header">
     <h1>שליחת SMS מהמחשב</h1>
-    <p class="subtitle">שליחת הודעה מותאמת אישית לרשימת אנשי קשר, דרך טלפון אנדרואיד המחובר בכבל</p>
+    <p class="subtitle">שליחת הודעה מותאמת אישית לרשימת אנשי קשר, ישירות מהדפדפן - דרך טלפון אנדרואיד המחובר בכבל</p>
   </header>
 
   <main>
+    <div id="unsupported-banner" class="banner" hidden>
+      הדפדפן הזה לא תומך בטכנולוגיית WebUSB, שהמערכת צריכה כדי לדבר עם הטלפון.
+      יש לפתוח את העמוד ב-<strong>Chrome</strong> או <strong>Edge</strong> (לא Firefox/Safari), דרך כתובת
+      <strong>https://</strong> (או localhost).
+    </div>
+
     <!-- Step 1: device -->
     <section class="card" id="device-section">
       <h2>1. חיבור הטלפון</h2>
+      <p class="hint">חברו את הטלפון בכבל USB, ודאו שניפוי USB (USB Debugging) מופעל, ולחצו על הכפתור.</p>
       <div class="row">
-        <label>
-          נתיב adb (השאר ריק אם adb מותקן ונגיש מה-PATH)
-          <input type="text" id="adb-path" placeholder="adb" />
-        </label>
-        <button id="refresh-devices-btn" type="button">בדוק מכשירים מחוברים</button>
-      </div>
-      <div class="row">
-        <label>
-          מכשיר
-          <select id="device-select">
-            <option value="">— אין מכשירים, לחץ "בדוק מכשירים" —</option>
-          </select>
-        </label>
+        <button id="connect-btn" type="button" class="primary">התחבר לטלפון</button>
+        <button id="disconnect-btn" type="button" hidden>נתק</button>
       </div>
       <p class="hint" id="device-status"></p>
     </section>
@@ -39,7 +34,6 @@
       <h2>2. קובץ אנשי קשר (Excel / CSV)</h2>
       <div class="row">
         <input type="file" id="file-input" accept=".xlsx,.xls,.csv" />
-        <button id="upload-btn" type="button">העלה קובץ</button>
       </div>
       <p class="hint" id="upload-status"></p>
       <div class="row" id="phone-column-row" hidden>
@@ -64,7 +58,7 @@
       <p class="hint" id="preview-warning"></p>
       <div class="table-wrap">
         <table id="preview-table">
-          <thead><tr><th>מספר</th><th>הודעה</th></tr></thead>
+          <thead><tr><th class="number">מספר</th><th>הודעה</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -109,13 +103,17 @@
 
       <div class="table-wrap">
         <table id="results-table" hidden>
-          <thead><tr><th>מספר</th><th>הודעה</th><th>סטטוס</th></tr></thead>
+          <thead><tr><th class="number">מספר</th><th>הודעה</th><th>סטטוס</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
     </section>
+
+    <footer class="app-footer">
+      <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת.</p>
+    </footer>
   </main>
 
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
