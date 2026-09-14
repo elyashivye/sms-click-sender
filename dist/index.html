@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>שליחת SMS מהמחשב</title>
+  <script type="module" crossorigin src="./assets/index-DmMt9HWC.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-H0ixCVh6.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>שליחת SMS מהמחשב</h1>
+    <p class="subtitle">שליחת הודעה מותאמת אישית לרשימת אנשי קשר, ישירות מהדפדפן - דרך טלפון אנדרואיד המחובר בכבל</p>
+  </header>
+
+  <main>
+    <div id="unsupported-banner" class="banner" hidden>
+      הדפדפן הזה לא תומך בטכנולוגיית WebUSB, שהמערכת צריכה כדי לדבר עם הטלפון.
+      יש לפתוח את העמוד ב-<strong>Chrome</strong> או <strong>Edge</strong> (לא Firefox/Safari), דרך כתובת
+      <strong>https://</strong> (או localhost).
+    </div>
+
+    <!-- Step 1: device -->
+    <section class="card" id="device-section">
+      <h2>1. חיבור הטלפון</h2>
+      <p class="hint">חברו את הטלפון בכבל USB, ודאו שניפוי USB (USB Debugging) מופעל, ולחצו על הכפתור.</p>
+      <div class="row">
+        <button id="connect-btn" type="button" class="primary">התחבר לטלפון</button>
+        <button id="disconnect-btn" type="button" hidden>נתק</button>
+      </div>
+      <p class="hint" id="device-status"></p>
+    </section>
+
+    <!-- Step 2: upload contacts -->
+    <section class="card" id="upload-section">
+      <h2>2. קובץ אנשי קשר (Excel / CSV)</h2>
+      <div class="row">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" />
+      </div>
+      <p class="hint" id="upload-status"></p>
+      <div class="row" id="phone-column-row" hidden>
+        <label>
+          עמודת מספר הטלפון
+          <select id="phone-column-select"></select>
+        </label>
+      </div>
+    </section>
+
+    <!-- Step 3: message -->
+    <section class="card" id="message-section">
+      <h2>3. ההודעה</h2>
+      <p class="hint">לחיצה על פרמטר מוסיפה אותו להודעה במקום הסמן. כל עמודה בקובץ הופכת לפרמטר זמין.</p>
+      <div class="chips" id="param-chips"></div>
+      <textarea id="message-textarea" rows="5" placeholder="לדוגמה: שלום {שם}, מזכירים לך את הפגישה..."></textarea>
+    </section>
+
+    <!-- Step 4: preview -->
+    <section class="card" id="preview-section">
+      <h2>4. תצוגה מקדימה</h2>
+      <p class="hint" id="preview-warning"></p>
+      <div class="table-wrap">
+        <table id="preview-table">
+          <thead><tr><th class="number">מספר</th><th>הודעה</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint" id="preview-count"></p>
+    </section>
+
+    <!-- Step 5: send -->
+    <section class="card" id="send-section">
+      <h2>5. שליחה</h2>
+      <div class="row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="dry-run-checkbox" checked />
+          מצב בדיקה (Dry Run) - לא שולח בפועל, רק מדמה
+        </label>
+        <label>
+          השהיה בין הודעות (שניות)
+          <input type="number" id="delay-input" value="4" min="1" step="1" />
+        </label>
+      </div>
+
+      <details class="advanced">
+        <summary>הגדרות מתקדמות - קואורדינטות גיבוי ידניות לכפתור "שלח"</summary>
+        <p class="hint">
+          המערכת מנסה לאתר את כפתור "שלח" אוטומטית על המסך. אם זה נכשל באפליקציית ה-SMS
+          שלך, אפשר להגדיר כאן קואורדינטות קבועות כגיבוי (X,Y בפיקסלים של מסך המכשיר).
+        </p>
+        <div class="row">
+          <label>X <input type="number" id="manual-tap-x" min="0" /></label>
+          <label>Y <input type="number" id="manual-tap-y" min="0" /></label>
+        </div>
+      </details>
+
+      <div class="row">
+        <button id="send-btn" type="button" class="primary">התחל שליחה</button>
+        <button id="cancel-btn" type="button" hidden>עצור</button>
+      </div>
+
+      <div id="progress-wrap" hidden>
+        <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+        <p class="hint" id="progress-text"></p>
+      </div>
+
+      <div class="table-wrap">
+        <table id="results-table" hidden>
+          <thead><tr><th class="number">מספר</th><th>הודעה</th><th>סטטוס</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Step 6: schedules (Electron only) -->
+    <section class="card" id="schedules-section" hidden>
+      <h2>6. תזמונים ותזכורות</h2>
+      <p class="hint">
+        זמין רק בתוכנה להורדה (לא באתר בדפדפן) - כי צריך שהתוכנה תרוץ ברקע כדי לבדוק תזמונים
+        גם כשהחלון סגור. רשימת אנשי הקשר וההודעה שנטענו למעלה נשמרות מקומית במחשב הזה בלבד,
+        ומשמשות לכל תזמון חדש שתיצור.
+      </p>
+
+      <div id="schedules-setup">
+        <p class="hint">מגדירים פעם אחת: כתובת השרת (שם הדומיין שהעלית אליו את הפרויקט) והסיסמה.</p>
+        <div class="row">
+          <label>כתובת השרת <input type="text" id="sched-server-url" placeholder="https://example.com" /></label>
+          <label>סיסמה <input type="password" id="sched-password" /></label>
+        </div>
+        <div class="row">
+          <button id="sched-connect-btn" type="button" class="primary">התחבר / הגדר סיסמה</button>
+        </div>
+        <p class="hint" id="sched-setup-status"></p>
+      </div>
+
+      <div id="schedules-main" hidden>
+        <p class="hint" id="sched-connected-as"></p>
+
+        <div class="row">
+          <label>תווית <input type="text" id="sched-label" placeholder="לדוגמה: תזכורת שבועית" /></label>
+          <label>
+            סוג תזמון
+            <select id="sched-type">
+              <option value="once">חד פעמי</option>
+              <option value="daily">כל יום</option>
+              <option value="weekly">כל שבוע</option>
+            </select>
+          </label>
+        </div>
+        <div class="row" id="sched-once-fields">
+          <label>תאריך ושעה <input type="datetime-local" id="sched-once-at" /></label>
+        </div>
+        <div class="row" id="sched-daily-fields" hidden>
+          <label>שעה <input type="time" id="sched-daily-time" value="09:00" /></label>
+        </div>
+        <div class="row" id="sched-weekly-fields" hidden>
+          <label>
+            יום בשבוע
+            <select id="sched-weekly-day">
+              <option value="0">ראשון</option>
+              <option value="1">שני</option>
+              <option value="2">שלישי</option>
+              <option value="3">רביעי</option>
+              <option value="4">חמישי</option>
+              <option value="5">שישי</option>
+              <option value="6">שבת</option>
+            </select>
+          </label>
+          <label>שעה <input type="time" id="sched-weekly-time" value="09:00" /></label>
+        </div>
+        <div class="row">
+          <button id="sched-create-btn" type="button" class="primary">
+            צור תזמון מהקובץ וההודעה שלמעלה
+          </button>
+        </div>
+        <p class="hint" id="sched-create-status"></p>
+
+        <div class="table-wrap">
+          <table id="schedules-table">
+            <thead>
+              <tr><th>תווית</th><th>תזמון</th><th>ריצה הבאה</th><th>ריצה אחרונה</th><th>פעיל</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <p>כל העיבוד קורה מקומית בדפדפן - שום קובץ או הודעה לא נשלחים לשום שרת (מלבד תזמון, אם הגדרת אחד).</p>
+    </footer>
+  </main>
+
+</body>
+</html>
