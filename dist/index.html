@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-CgZLOV-q.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BmCpeAKy.css">
+  <script type="module" crossorigin src="./assets/index-BzFWqBR7.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-VjVWBfLt.css">
 </head>
 <body>
   <div class="app-shell">
@@ -112,6 +112,41 @@
           </button>
         </div>
         <p class="status-line" id="upload-status"></p>
+        <h3 class="sub-heading">או: ייבוא מקבוצות וואטסאפ</h3>
+        <p class="hint">
+          שולף מהטלפון (דרך אותו חיבור USB) את רשימת הקבוצות שאתה חבר בהן,
+          ומאפשר לבחור אילו קבוצות להפוך לרשימת אנשי קשר - בדיוק כאילו הועלה
+          קובץ. שיטה זו קוראת את מסך וואטסאפ (כמו שליחת הודעות) ועלולה
+          להזדקק לכיוונון אם המסך של וואטסאפ משתנה בעדכון עתידי.
+        </p>
+        <div class="row">
+          <button id="load-groups-btn" type="button" class="primary">טען קבוצות מהטלפון</button>
+        </div>
+        <p class="status-line" id="groups-load-status"></p>
+        <div id="groups-picklist-wrap" hidden>
+          <div class="row">
+            <button id="groups-select-all-btn" type="button" class="ghost">בחר הכל</button>
+            <button id="groups-select-none-btn" type="button" class="ghost">נקה בחירה</button>
+          </div>
+          <ul class="groups-picklist" id="groups-picklist"></ul>
+          <div class="row">
+            <button id="build-contacts-from-groups-btn" type="button" class="primary">
+              בנה אנשי קשר מהקבוצות שנבחרו
+            </button>
+            <button id="groups-import-cancel-btn" type="button" hidden>עצור</button>
+          </div>
+          <div id="groups-import-progress-wrap" hidden>
+            <div class="progress-bar"><div class="progress-bar-fill" id="groups-import-progress-fill"></div></div>
+            <p class="hint" id="groups-import-progress-text"></p>
+          </div>
+          <div class="table-wrap">
+            <table id="groups-import-results-table" hidden>
+              <thead><tr><th>קבוצה</th><th>סטטוס</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="row" id="phone-column-row" hidden>
           <label>
             עמודת מספר הטלפון

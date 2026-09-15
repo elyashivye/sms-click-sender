@@ -1,5 +1,5 @@
 import "./style.css";
-import { connect, isWebUsbSupported, reconnect } from "./lib/adb-client.js";
+import { connect, isWebUsbSupported, listGroupChats, reconnect } from "./lib/adb-client.js";
 import {
   downloadSampleFile,
   guessCountryCodeColumn,
@@ -9,6 +9,7 @@ import {
 } from "./lib/excel.js";
 import { SendJob } from "./lib/sender.js";
 import { SaveContactsJob } from "./lib/contacts-job.js";
+import { WhatsAppGroupsImportJob } from "./lib/whatsapp-groups-job.js";
 import * as schedulesApi from "./lib/schedules-client.js";
 import { render, unknownPlaceholders } from "./lib/templating.js";
 
@@ -19,6 +20,8 @@ const state = {
   phoneColumn: null,
   job: null,
   contactsJob: null,
+  groupsImportJob: null,
+  availableGroups: [],
   hasSentOnce: false,
   serverConfig: null, // { url, password } - only used in Electron
 };
@@ -90,6 +93,58 @@ async function trySilentReconnect() {
 
 // ---------- Step 2: upload ----------
 
+// Wires headers+rows into every downstream piece of UI (column selects,
+// contacts-save-box, preview) - shared by the file-upload path and the
+// WhatsApp-groups-import path, since from here on both are just "a table
+// of contacts" to the rest of the app.
+function applyContactsData(headers, rows) {
+  state.headers = headers;
+  state.rows = rows;
+  state.phoneColumn = guessPhoneColumn(headers);
+
+  const phoneSelect = el("phone-column-select");
+  phoneSelect.innerHTML = "";
+  headers.forEach((h) => {
+    const opt = document.createElement("option");
+    opt.value = h;
+    opt.textContent = h;
+    if (h === state.phoneColumn) opt.selected = true;
+    phoneSelect.appendChild(opt);
+  });
+  el("phone-column-row").hidden = false;
+
+  const guessedNameColumn = guessNameColumn(headers);
+  const nameSelect = el("name-column-select");
+  nameSelect.innerHTML = "";
+  headers.forEach((h) => {
+    const opt = document.createElement("option");
+    opt.value = h;
+    opt.textContent = h;
+    if (h === guessedNameColumn) opt.selected = true;
+    nameSelect.appendChild(opt);
+  });
+  el("contacts-save-box").hidden = false;
+  el("contacts-progress-wrap").hidden = true;
+  el("contacts-results-table").hidden = true;
+  document.querySelector("#contacts-results-table tbody").innerHTML = "";
+  el("contacts-cancel-btn").hidden = true;
+  el("save-contacts-btn").disabled = false;
+
+  const guessedCountryCodeColumn = guessCountryCodeColumn(headers);
+  const countryCodeColumnSelect = el("country-code-column-select");
+  countryCodeColumnSelect.innerHTML = '<option value="">ללא - תמיד קידומת ברירת המחדל</option>';
+  headers.forEach((h) => {
+    const opt = document.createElement("option");
+    opt.value = h;
+    opt.textContent = h;
+    if (h === guessedCountryCodeColumn) opt.selected = true;
+    countryCodeColumnSelect.appendChild(opt);
+  });
+
+  renderChips(headers);
+  refreshPreview();
+}
+
 async function handleFileChange(event) {
   const file = event.target.files[0];
   const statusEl = el("upload-status");
@@ -104,53 +159,8 @@ async function handleFileChange(event) {
       return;
     }
 
-    state.headers = headers;
-    state.rows = rows;
-    state.phoneColumn = guessPhoneColumn(headers);
-
     statusEl.textContent = `נטענו ${rows.length} אנשי קשר, ${headers.length} עמודות.`;
-
-    const phoneSelect = el("phone-column-select");
-    phoneSelect.innerHTML = "";
-    headers.forEach((h) => {
-      const opt = document.createElement("option");
-      opt.value = h;
-      opt.textContent = h;
-      if (h === state.phoneColumn) opt.selected = true;
-      phoneSelect.appendChild(opt);
-    });
-    el("phone-column-row").hidden = false;
-
-    const guessedNameColumn = guessNameColumn(headers);
-    const nameSelect = el("name-column-select");
-    nameSelect.innerHTML = "";
-    headers.forEach((h) => {
-      const opt = document.createElement("option");
-      opt.value = h;
-      opt.textContent = h;
-      if (h === guessedNameColumn) opt.selected = true;
-      nameSelect.appendChild(opt);
-    });
-    el("contacts-save-box").hidden = false;
-    el("contacts-progress-wrap").hidden = true;
-    el("contacts-results-table").hidden = true;
-    document.querySelector("#contacts-results-table tbody").innerHTML = "";
-    el("contacts-cancel-btn").hidden = true;
-    el("save-contacts-btn").disabled = false;
-
-    const guessedCountryCodeColumn = guessCountryCodeColumn(headers);
-    const countryCodeColumnSelect = el("country-code-column-select");
-    countryCodeColumnSelect.innerHTML = '<option value="">ללא - תמיד קידומת ברירת המחדל</option>';
-    headers.forEach((h) => {
-      const opt = document.createElement("option");
-      opt.value = h;
-      opt.textContent = h;
-      if (h === guessedCountryCodeColumn) opt.selected = true;
-      countryCodeColumnSelect.appendChild(opt);
-    });
-
-    renderChips(headers);
-    refreshPreview();
+    applyContactsData(headers, rows);
   } catch (err) {
     statusEl.textContent = "שגיאה בקריאת הקובץ: " + (err.message || err);
   }
@@ -246,6 +256,123 @@ function renderContactsJobStatus(snapshot) {
 
 function handleContactsCancel() {
   state.contactsJob?.cancel();
+}
+
+// ---------- import contacts from WhatsApp groups ----------
+
+async function handleLoadGroups() {
+  const statusEl = el("groups-load-status");
+  if (!state.adb) {
+    alert("יש להתחבר לטלפון קודם.");
+    return;
+  }
+
+  el("load-groups-btn").disabled = true;
+  el("groups-picklist-wrap").hidden = true;
+  statusEl.textContent = "פותח את וואטסאפ וסורק את רשימת הקבוצות...";
+
+  try {
+    const names = await listGroupChats(state.adb, {
+      onProgress: (count) => {
+        statusEl.textContent = `נמצאו ${count} קבוצות עד כה...`;
+      },
+    });
+    state.availableGroups = names;
+    if (!names.length) {
+      statusEl.textContent = "לא נמצאו קבוצות. ודאו שבוואטסאפ יש לפחות קבוצה אחת ושהמכשיר לא נעול.";
+    } else {
+      statusEl.textContent = `נמצאו ${names.length} קבוצות.`;
+      renderGroupsPicklist(names);
+      el("groups-picklist-wrap").hidden = false;
+    }
+  } catch (err) {
+    statusEl.textContent = "שגיאה: " + (err.message || err);
+  } finally {
+    el("load-groups-btn").disabled = false;
+  }
+}
+
+function renderGroupsPicklist(names) {
+  const list = el("groups-picklist");
+  list.innerHTML = names
+    .map(
+      (name, i) => `
+      <li>
+        <label class="checkbox-label">
+          <input type="checkbox" class="group-checkbox" id="group-check-${i}" value="${escapeHtml(name)}" />
+          ${escapeHtml(name)}
+        </label>
+      </li>`
+    )
+    .join("");
+}
+
+function setAllGroupCheckboxes(checked) {
+  document.querySelectorAll(".group-checkbox").forEach((cb) => {
+    cb.checked = checked;
+  });
+}
+
+async function handleBuildContactsFromGroups() {
+  const groupNames = [...document.querySelectorAll(".group-checkbox:checked")].map((cb) => cb.value);
+  if (!groupNames.length) {
+    alert("יש לבחור לפחות קבוצה אחת.");
+    return;
+  }
+  if (!state.adb) {
+    alert("יש להתחבר לטלפון קודם.");
+    return;
+  }
+  if (
+    state.rows.length &&
+    !confirm(`יש כבר ${state.rows.length} אנשי קשר טעונים - הפעולה תחליף אותם ברשימה החדשה מהקבוצות. להמשיך?`)
+  ) {
+    return;
+  }
+
+  const job = new WhatsAppGroupsImportJob(groupNames, { adb: state.adb });
+  state.groupsImportJob = job;
+
+  el("build-contacts-from-groups-btn").disabled = true;
+  el("groups-import-cancel-btn").hidden = false;
+  el("groups-import-progress-wrap").hidden = false;
+  el("groups-import-results-table").hidden = false;
+  document.querySelector("#groups-import-results-table tbody").innerHTML = "";
+
+  job.onUpdate(renderGroupsImportStatus);
+  await job.run();
+}
+
+function renderGroupsImportStatus(snapshot) {
+  const pct = snapshot.total ? Math.round((snapshot.completed / snapshot.total) * 100) : 0;
+  el("groups-import-progress-fill").style.width = pct + "%";
+  el("groups-import-progress-text").textContent = `${snapshot.completed} / ${snapshot.total} (${snapshot.status})`;
+
+  const tbody = document.querySelector("#groups-import-results-table tbody");
+  tbody.innerHTML = snapshot.results
+    .map((r) => {
+      const statusLabel = r.ok
+        ? `<span class="status-ok">נוספו ${r.count} אנשי קשר</span>`
+        : `<span class="status-fail">נכשל: ${escapeHtml(r.error || "")}</span>`;
+      return `<tr><td>${escapeHtml(r.group)}</td><td>${statusLabel}</td></tr>`;
+    })
+    .join("");
+
+  if (snapshot.status === "done" || snapshot.status === "cancelled") {
+    el("build-contacts-from-groups-btn").disabled = false;
+    el("groups-import-cancel-btn").hidden = true;
+
+    if (snapshot.contacts.length) {
+      const headers = ["שם", "טלפון", "קבוצה"];
+      const rows = snapshot.contacts.map((c) => ({ "שם": c.name, "טלפון": c.phone, "קבוצה": c.group }));
+      applyContactsData(headers, rows);
+      el("upload-status").textContent = `יובאו ${rows.length} אנשי קשר מ-${snapshot.results.filter((r) => r.ok).length} קבוצות וואטסאפ.`;
+    }
+  }
+}
+
+function handleGroupsImportCancel() {
+  state.groupsImportJob?.cancel();
 }
 
 // ---------- Step 4: preview ----------
@@ -706,6 +833,11 @@ el("send-btn").addEventListener("click", handleSend);
 el("cancel-btn").addEventListener("click", handleCancel);
 el("save-contacts-btn").addEventListener("click", handleSaveContacts);
 el("contacts-cancel-btn").addEventListener("click", handleContactsCancel);
+el("load-groups-btn").addEventListener("click", handleLoadGroups);
+el("groups-select-all-btn").addEventListener("click", () => setAllGroupCheckboxes(true));
+el("groups-select-none-btn").addEventListener("click", () => setAllGroupCheckboxes(false));
+el("build-contacts-from-groups-btn").addEventListener("click", handleBuildContactsFromGroups);
+el("groups-import-cancel-btn").addEventListener("click", handleGroupsImportCancel);
 
 setupSidebarNav();
 setupUsbGuideDrawer();

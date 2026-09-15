@@ -413,6 +413,30 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .chip:hover { background: #e0dcfc; }
 
+/* ---------- WhatsApp groups picklist ---------- */
+
+.groups-picklist {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+}
+
+.groups-picklist li {
+  border-bottom: 1px solid var(--border);
+}
+
+.groups-picklist li:last-child {
+  border-bottom: none;
+}
+
+.groups-picklist label {
+  padding: 9px 14px;
+}
+
 /* ---------- tables ---------- */
 
 .table-wrap {
