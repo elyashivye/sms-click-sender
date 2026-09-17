@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Send personalized SMS from an Android phone connected over USB, straight from the browser (or as a downloadable desktop app) using WebUSB - no server-side ADB required.",
+  "author": "SMS Click Sender",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -27,13 +28,18 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "artifactName": "SMS-Click-Sender-Setup.${ext}"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "artifactName": "SMS-Click-Sender.${ext}"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "artifactName": "SMS-Click-Sender.${ext}",
+      "category": "Utility",
+      "synopsis": "Send personalized SMS/WhatsApp from an Android phone over USB"
     }
   },
   "dependencies": {

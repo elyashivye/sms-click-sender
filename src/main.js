@@ -845,6 +845,9 @@ setupChannelPicker();
 updateNavProgress();
 
 if (isElectron()) {
+  // Already running as the desktop app - a "download the desktop app" page
+  // would be redundant/confusing, so it's shown only on the plain website.
+  el("nav-download").hidden = true;
   el("nav-schedules").hidden = false;
   el("sched-type").addEventListener("change", updateScheduleTypeFields);
   el("sched-connect-btn").addEventListener("click", handleSchedConnect);

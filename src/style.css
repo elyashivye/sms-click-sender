@@ -333,6 +333,27 @@ button.ghost svg { width: 16px; height: 16px; }
 
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* Anchor tags styled as buttons - used for real file downloads (external
+   links), where a plain <button> with a click handler would be wrong. */
+a.primary, a.ghost {
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+a.primary:active, a.ghost:active { transform: translateY(1px); }
+a.primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28); }
+a.primary:hover { background: var(--primary-dark); }
+a.ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+a.ghost:hover { border-color: var(--primary); color: var(--primary); }
+a.ghost svg, a.primary svg { width: 16px; height: 16px; }
+
 .hint {
   color: var(--muted);
   font-size: 0.85rem;
@@ -412,6 +433,34 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   transition: background 0.15s ease;
 }
 .chip:hover { background: #e0dcfc; }
+
+/* ---------- desktop app download cards ---------- */
+
+.download-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.download-card {
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  text-align: center;
+}
+
+.download-card svg { width: 32px; height: 32px; color: var(--primary); }
+.download-card h3 { margin: 0; font-size: 1rem; }
+.download-card p { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.download-card a { width: 100%; }
+
+.hint-list { margin: 0 0 0 20px; padding: 0; }
+.hint-list li { margin-bottom: 6px; }
 
 /* ---------- WhatsApp groups picklist ---------- */
 

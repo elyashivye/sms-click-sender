@@ -1,0 +1,79 @@
+name: Build and publish desktop app
+
+# Builds the downloadable Electron app for Windows/Mac/Linux and publishes
+# the installers to a single rolling "latest" GitHub Release, so the
+# website's download links never need to change between versions (the
+# release's asset filenames are fixed - see build.*.artifactName in
+# package.json).
+
+on:
+  push:
+    branches:
+      - main
+      - claude/gallant-dirac-lk7nbw
+    paths-ignore:
+      - "dist/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flag: --win
+          - os: macos-latest
+            flag: --mac
+          - os: ubuntu-latest
+            flag: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npx electron-builder ${{ matrix.flag }}
+        env:
+          # No code-signing certificate is configured - build unsigned
+          # installers rather than have electron-builder try (and fail) to
+          # find one. Users will see an "unknown publisher" warning on first
+          # run, documented on the website's download page.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish/update the "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: הגרסה העדכנית
+          body: >
+            נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים
+            לגרסה הזו, ולא צריך לעדכן אותם בעצמכם.
+          files: artifacts/**/*
+          fail_on_unmatched_files: true

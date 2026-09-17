@@ -54,6 +54,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>תזמונים</span>
         </button>
+        <button type="button" class="nav-item" id="nav-download" data-section="download-section">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>הורדת התוכנה</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -353,6 +357,66 @@
             </table>
           </div>
         </div>
+      </section>
+
+      <!-- Page: download the desktop app (hidden inside the app itself) -->
+      <section class="card page" id="download-section" data-page hidden>
+        <h2>
+          <span class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </span>
+          <span>הורדת התוכנה</span>
+        </h2>
+        <p class="hint">
+          האתר הזה כבר עושה הכל - חיבור, אנשי קשר, ייבוא קבוצות, שליחה
+          ושמירת אנשי קשר - בלי להתקין שום דבר. התוכנה להורדה נותנת בנוסף
+          <strong>תזמונים ותזכורות</strong> שרצים ברקע גם כשהחלון סגור (לשם
+          כך היא צריכה לרוץ במחשב שהטלפון מחובר אליו).
+        </p>
+
+        <div class="download-cards">
+          <div class="download-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <h3>Windows</h3>
+            <p>קובץ התקנה (.exe)</p>
+            <a class="primary" href="https://github.com/elyashivye/sms-click-sender/releases/latest/download/SMS-Click-Sender-Setup.exe">
+              הורדה ל-Windows
+            </a>
+          </div>
+          <div class="download-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <h3>Mac</h3>
+            <p>קובץ התקנה (.dmg)</p>
+            <a class="primary" href="https://github.com/elyashivye/sms-click-sender/releases/latest/download/SMS-Click-Sender.dmg">
+              הורדה ל-Mac
+            </a>
+          </div>
+          <div class="download-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <h3>Linux</h3>
+            <p>קובץ הרצה (.AppImage)</p>
+            <a class="primary" href="https://github.com/elyashivye/sms-click-sender/releases/latest/download/SMS-Click-Sender.AppImage">
+              הורדה ל-Linux
+            </a>
+          </div>
+        </div>
+
+        <h3 class="sub-heading">אזהרת "מפרסם לא מזוהה" - זה תקין</h3>
+        <p class="hint">
+          התוכנה לא חתומה בחתימה דיגיטלית רשמית (זה עולה כסף ודורש תהליך
+          מול חברה חיצונית) - לכן המערכת ההפעלה תציג אזהרת אבטחה כללית
+          בפתיחה הראשונה. זה <strong>לא</strong> אומר שיש בעיה בתוכנה.
+        </p>
+        <ul class="hint hint-list">
+          <li><strong>Windows:</strong> יופיע "Windows protected your PC" - לוחצים "More info" ואז "Run anyway".</li>
+          <li><strong>Mac:</strong> אם מופיעה הודעה שהאפליקציה חסומה - לוחצים על הקובץ עם קליק ימני ובוחרים "Open" (במקום לחיצה כפולה רגילה), ומאשרים בחלון שנפתח.</li>
+          <li><strong>Linux:</strong> יש לסמן את הקובץ שהורד כקובץ הרצה (<code>chmod +x</code>, או "Allow executing as program" בתכונות הקובץ) לפני ההרצה.</li>
+        </ul>
+        <p class="hint">
+          קישורי ההורדה תמיד מצביעים לגרסה העדכנית ביותר. אפשר גם לראות
+          את כל הגרסאות בעמוד
+          <a href="https://github.com/elyashivye/sms-click-sender/releases" target="_blank" rel="noopener noreferrer">ה-Releases בגיטהאב</a>.
+        </p>
       </section>
     </main>
   </div>
