@@ -69,23 +69,34 @@ jobs:
         with:
           path: artifacts
 
-      - name: Publish/update the desktop-app release
-        uses: softprops/action-gh-release@v2
-        with:
-          # Not literally "latest" - that tag got a release stuck in a bad
-          # draft state during setup. The website's download links use
-          # GitHub's generic /releases/latest/ endpoint (whichever release
-          # is newest and published, regardless of its tag name), so this
-          # can be any stable tag as long as make_latest keeps it current.
-          tag_name: desktop-app
-          name: הגרסה העדכנית
-          body: >
-            נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים
-            לגרסה הזו, ולא צריך לעדכן אותם בעצמכם.
-          files: |
-            artifacts/**/*.exe
-            artifacts/**/*.dmg
-            artifacts/**/*.AppImage
-          fail_on_unmatched_files: true
-          make_latest: true
-          draft: false
+      # Uses GitHub's own gh CLI (preinstalled on every runner) instead of a
+      # third-party action: uploading ~130MB installers to a just-created
+      # release via softprops/action-gh-release kept racing GitHub's own
+      # asset storage (its log even said "not yet discoverable by tag ...,
+      # retrying") - concurrent uploads failed with a generic "Error saving
+      # asset", and worse, a failed run left the release permanently stuck
+      # as an undiscoverable draft even with draft:false passed explicitly.
+      # gh release upload sends files one at a time against the same code
+      # path `gh` itself uses, which is far more battle-tested for this.
+      - name: Publish installers to the desktop-app release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          REPO="${{ github.repository }}"
+
+          # Clean up anything left over from earlier failed attempts under
+          # either tag this workflow has used, so a stuck draft never blocks
+          # a fresh release from being created.
+          gh release delete latest --repo "$REPO" --yes --cleanup-tag || true
+          gh release delete desktop-app --repo "$REPO" --yes --cleanup-tag || true
+
+          gh release create desktop-app --repo "$REPO" \
+            --title "הגרסה העדכנית" \
+            --notes "נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים לגרסה הזו, ולא צריך לעדכן אותם בעצמכם." \
+            --latest
+
+          gh release upload desktop-app --repo "$REPO" --clobber \
+            artifacts/installer-windows-latest/*.exe \
+            artifacts/installer-macos-latest/*.dmg \
+            artifacts/installer-ubuntu-latest/*.AppImage
