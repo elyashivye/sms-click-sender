@@ -30,6 +30,22 @@ export function validateRecurrence(recurrence) {
   return "סוג תזמון לא מוכר";
 }
 
+// Only validated when runMode is "phone" - a desktop-run schedule never
+// carries a payload at all (see server/index.js). SMS-only for now: the
+// phone app sends via Android's SmsManager, which has no WhatsApp
+// equivalent, so there's no channel field to validate here.
+export function validatePhonePayload(payload) {
+  if (!payload || typeof payload !== "object") return "חסר תוכן לשליחה מהטלפון";
+  if (!Array.isArray(payload.rows) || !payload.rows.length) return "רשימת אנשי הקשר ריקה";
+  if (!payload.rows.every((row) => row && typeof row === "object")) return "רשימת אנשי הקשר לא תקינה";
+  if (!payload.template || !String(payload.template).trim()) return "חסרה הודעה לשליחה";
+  if (!payload.phoneColumn || !String(payload.phoneColumn).trim()) return "חסרה עמודת מספר טלפון";
+  if (payload.delaySeconds !== undefined && (!Number.isFinite(payload.delaySeconds) || payload.delaySeconds < 0)) {
+    return "השהיה בין הודעות לא תקינה";
+  }
+  return null;
+}
+
 export function computeNextRun(recurrence, after = new Date()) {
   if (recurrence.type === "once") {
     const at = new Date(recurrence.at);

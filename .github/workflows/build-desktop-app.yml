@@ -78,6 +78,11 @@ jobs:
       # as an undiscoverable draft even with draft:false passed explicitly.
       # gh release upload sends files one at a time against the same code
       # path `gh` itself uses, which is far more battle-tested for this.
+      #
+      # Create-only-if-missing on purpose, never delete+recreate: the
+      # Android app (build-android-app.yml) uploads its own APK to this
+      # same release independently, and a delete+recreate here would wipe
+      # that file out if the two workflows ever run from the same push.
       - name: Publish installers to the desktop-app release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -85,16 +90,12 @@ jobs:
           set -e
           REPO="${{ github.repository }}"
 
-          # Clean up anything left over from earlier failed attempts under
-          # either tag this workflow has used, so a stuck draft never blocks
-          # a fresh release from being created.
-          gh release delete latest --repo "$REPO" --yes --cleanup-tag || true
-          gh release delete desktop-app --repo "$REPO" --yes --cleanup-tag || true
-
-          gh release create desktop-app --repo "$REPO" \
-            --title "הגרסה העדכנית" \
-            --notes "נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים לגרסה הזו, ולא צריך לעדכן אותם בעצמכם." \
-            --latest
+          if ! gh release view desktop-app --repo "$REPO" >/dev/null 2>&1; then
+            gh release create desktop-app --repo "$REPO" \
+              --title "הגרסה העדכנית" \
+              --notes "נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים לגרסה הזו, ולא צריך לעדכן אותם בעצמכם." \
+              --latest
+          fi
 
           gh release upload desktop-app --repo "$REPO" --clobber \
             artifacts/installer-windows-latest/*.exe \

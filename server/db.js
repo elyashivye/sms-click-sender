@@ -13,9 +13,11 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 const DEFAULT_DB = {
-  // { salt: hex, hash: hex } - set once via POST /api/setup. Never holds
-  // contact lists or message content - only scheduling metadata does.
+  // { salt: hex, hash: hex } - set once via POST /api/setup.
   passwordHash: null,
+  // Desktop-run schedules hold only scheduling metadata. Phone-run ones
+  // (runMode: "phone") also carry a payload field with the actual contacts
+  // + message content - see the comment at the top of index.js.
   schedules: [],
 };
 

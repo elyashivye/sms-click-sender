@@ -1,8 +1,13 @@
 // Single Node app: serves the built website (dist/) as static files AND a
-// small JSON API under /api/* for scheduled/recurring sends. The API only
-// ever stores scheduling metadata (label, timing, status) - never contact
-// lists or message text, which stay local to whichever computer's Electron
-// app has the phone plugged in. See README.md for the full picture.
+// small JSON API under /api/* for scheduled/recurring sends. For a
+// "desktop"-run schedule (the default, and the only mode that existed
+// before phone-run schedules), the API only ever stores scheduling
+// metadata (label, timing, status) - never contact lists or message text,
+// which stay local to whichever computer's Electron app has the phone
+// plugged in. A "phone"-run schedule is the deliberate exception: the
+// whole point is that no computer needs to be involved when it runs, so
+// its contacts+message *do* get stored here so the Android app can pull
+// them on its own. See README.md for the full picture and that trade-off.
 
 import crypto from "node:crypto";
 import path from "node:path";
@@ -11,7 +16,7 @@ import express from "express";
 
 import { hashPassword, verifyPassword } from "./auth.js";
 import { readDb, updateDb } from "./db.js";
-import { computeNextRun, validateRecurrence } from "./schedule.js";
+import { computeNextRun, validatePhonePayload, validateRecurrence } from "./schedule.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, "..", "dist");
@@ -80,22 +85,35 @@ async function requireAuth(req, res, next) {
 // ---------- schedules ----------
 
 app.get("/api/schedules", requireAuth, async (req, res) => {
-  res.json({ schedules: req.db.schedules });
+  // The list view never needs the actual contacts/message content (only
+  // used when a phone-run schedule is fetched via /due) - strip it here so
+  // a large contact list isn't re-sent on every schedules-page refresh.
+  const schedules = req.db.schedules.map(({ payload, ...rest }) => rest);
+  res.json({ schedules });
 });
 
 app.post("/api/schedules", requireAuth, async (req, res) => {
-  const { label, recurrence } = req.body || {};
+  const { label, recurrence, runMode, payload } = req.body || {};
   if (!label || !String(label).trim()) {
     return res.status(400).json({ error: "חסרה תווית לתזמון" });
   }
   const recurrenceError = validateRecurrence(recurrence);
   if (recurrenceError) return res.status(400).json({ error: recurrenceError });
 
+  const resolvedRunMode = runMode === "phone" ? "phone" : "desktop";
+  if (resolvedRunMode === "phone") {
+    const payloadError = validatePhonePayload(payload);
+    if (payloadError) return res.status(400).json({ error: payloadError });
+  }
+
   const now = new Date();
   const schedule = {
     id: crypto.randomUUID(),
     label: String(label).trim(),
     recurrence,
+    runMode: resolvedRunMode,
+    // Only ever set for runMode "phone" - see the file-level comment above.
+    payload: resolvedRunMode === "phone" ? payload : undefined,
     enabled: true,
     nextRunAt: computeNextRun(recurrence, now)?.toISOString() ?? null,
     lastRunAt: null,
@@ -150,13 +168,20 @@ app.delete("/api/schedules/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// The Electron app polls this every few minutes and executes whatever
-// comes back locally (it holds the actual contact list/message content).
+// Polled by two different runners, each asking only for its own kind:
+// the Electron app (?runMode=desktop, the default) executes what comes
+// back using the contact list/message content it already holds locally;
+// the Android app (?runMode=phone) has nothing local at all, so its
+// schedules come back with the actual payload inlined. Filtering by
+// runMode here is what stops a desktop app from ever seeing (and wrongly
+// failing) a phone-run schedule it has no local content for, and vice
+// versa - each schedule belongs to exactly one runner.
 app.get("/api/schedules/due", requireAuth, async (req, res) => {
+  const runMode = req.query.runMode === "phone" ? "phone" : "desktop";
   const now = new Date();
-  const due = req.db.schedules.filter(
-    (s) => s.enabled && s.nextRunAt && new Date(s.nextRunAt) <= now
-  );
+  const due = req.db.schedules
+    .filter((s) => s.runMode === runMode && s.enabled && s.nextRunAt && new Date(s.nextRunAt) <= now)
+    .map((s) => (runMode === "phone" ? s : { ...s, payload: undefined }));
   res.json({ due });
 });
 

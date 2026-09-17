@@ -1,0 +1,78 @@
+name: Build and publish Android app
+
+# Builds the Android companion app (android/) and publishes its debug APK
+# to the same rolling "desktop-app" GitHub Release the Windows/Mac/Linux
+# installers use (build-desktop-app.yml) - see that workflow's file comment
+# for why the release is created only-if-missing, never deleted+recreated:
+# these two workflows can both touch the same release from the same push.
+#
+# Debug (not release-signed) APK on purpose: this isn't going to the Play
+# Store (which restricts the SEND_SMS permission to a narrow set of default-
+# handler app categories anyway), it's sideloaded straight from the
+# website's download page like the desktop app - a debug build installs
+# and runs identically for that, and skips needing to manage a release
+# signing key/keystore as a repo secret.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/gallant-dirac-lk7nbw
+    paths-ignore:
+      - "dist/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Run unit tests
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts
+
+      - name: Publish the APK to the desktop-app release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          REPO="${{ github.repository }}"
+
+          if ! gh release view desktop-app --repo "$REPO" >/dev/null 2>&1; then
+            gh release create desktop-app --repo "$REPO" \
+              --title "הגרסה העדכנית" \
+              --notes "נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים לגרסה הזו, ולא צריך לעדכן אותם בעצמכם." \
+              --latest
+          fi
+
+          # Stable filename regardless of what Gradle itself named the APK.
+          cp artifacts/*.apk artifacts/SMS-Click-Sender.apk
+          gh release upload desktop-app --repo "$REPO" --clobber artifacts/SMS-Click-Sender.apk

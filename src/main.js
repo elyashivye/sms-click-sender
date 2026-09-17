@@ -594,6 +594,7 @@ async function refreshSchedulesList() {
         (s) => `
         <tr>
           <td>${escapeHtml(s.label)}</td>
+          <td>${s.runMode === "phone" ? "מהטלפון" : "מהמחשב"}</td>
           <td>${escapeHtml(describeRecurrence(s.recurrence))}</td>
           <td>${escapeHtml(formatDate(s.nextRunAt))}</td>
           <td>${escapeHtml(formatDate(s.lastRunAt))}${s.lastStatus ? ` (${s.lastStatus === "success" ? "הצלחה" : "כישלון"})` : ""}</td>
@@ -620,13 +621,18 @@ async function refreshSchedulesList() {
       });
     });
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6">שגיאה בטעינת תזמונים: ${escapeHtml(err.message || err)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7">שגיאה בטעינת תזמונים: ${escapeHtml(err.message || err)}</td></tr>`;
   }
+}
+
+function currentSchedRunMode() {
+  return document.querySelector('input[name="sched-run-mode"]:checked')?.value || "desktop";
 }
 
 async function handleCreateSchedule() {
   const statusEl = el("sched-create-status");
   const label = el("sched-label").value.trim();
+  const runMode = currentSchedRunMode();
   const { template, phoneColumn, channel, countryCode, countryCodeColumn, delaySeconds, manualTap } =
     currentSendConfig();
 
@@ -642,22 +648,36 @@ async function handleCreateSchedule() {
     return;
   }
 
+  if (
+    runMode === "phone" &&
+    !confirm("תזמון מהטלפון שולח את רשימת אנשי הקשר ותוכן ההודעה לשרת (כדי שהטלפון יוכל למשוך אותם בלי מחשב מעורב). להמשיך?")
+  ) {
+    return;
+  }
+
   statusEl.textContent = "יוצר תזמון...";
   try {
     const schedule = await schedulesApi.createSchedule(state.serverConfig.url, state.serverConfig.password, {
       label,
       recurrence,
+      runMode,
+      // Phone-run schedules are SMS-only for now (no official WhatsApp API
+      // on-device either) - channel/countryCode/manualTap are meaningless
+      // there and are simply not sent.
+      payload: runMode === "phone" ? { rows: state.rows, template, phoneColumn, delaySeconds } : undefined,
     });
-    await window.smsSender.saveLocalJob(schedule.id, {
-      rows: state.rows,
-      template,
-      phoneColumn,
-      channel,
-      countryCode,
-      countryCodeColumn,
-      delaySeconds,
-      manualTap,
-    });
+    if (runMode === "desktop") {
+      await window.smsSender.saveLocalJob(schedule.id, {
+        rows: state.rows,
+        template,
+        phoneColumn,
+        channel,
+        countryCode,
+        countryCodeColumn,
+        delaySeconds,
+        manualTap,
+      });
+    }
     statusEl.textContent = "התזמון נוצר.";
     el("sched-label").value = "";
     await refreshSchedulesList();
@@ -852,6 +872,11 @@ if (isElectron()) {
   el("sched-type").addEventListener("change", updateScheduleTypeFields);
   el("sched-connect-btn").addEventListener("click", handleSchedConnect);
   el("sched-create-btn").addEventListener("click", handleCreateSchedule);
+  document.querySelectorAll('input[name="sched-run-mode"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      el("sched-run-phone-hint").hidden = currentSchedRunMode() !== "phone";
+    });
+  });
   updateScheduleTypeFields();
   window.smsSender.onRunJob(handleRunJob);
   loadServerConfig();

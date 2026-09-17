@@ -41,7 +41,7 @@ async function tick(getWindow) {
 
   let due;
   try {
-    const res = await fetch(`${config.url}/api/schedules/due`, {
+    const res = await fetch(`${config.url}/api/schedules/due?runMode=desktop`, {
       headers: { Authorization: `Bearer ${config.password}` },
     });
     if (!res.ok) {
