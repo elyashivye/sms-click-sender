@@ -75,5 +75,8 @@ jobs:
           body: >
             נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים
             לגרסה הזו, ולא צריך לעדכן אותם בעצמכם.
-          files: artifacts/**/*
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.AppImage
           fail_on_unmatched_files: true
