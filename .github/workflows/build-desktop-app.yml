@@ -42,7 +42,7 @@ jobs:
 
       - run: npm run build
 
-      - run: npx electron-builder ${{ matrix.flag }}
+      - run: npx electron-builder ${{ matrix.flag }} --publish never
         env:
           # No code-signing certificate is configured - build unsigned
           # installers rather than have electron-builder try (and fail) to
