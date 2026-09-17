@@ -1,10 +1,12 @@
 name: Build and publish desktop app
 
 # Builds the downloadable Electron app for Windows/Mac/Linux and publishes
-# the installers to a single rolling "latest" GitHub Release, so the
-# website's download links never need to change between versions (the
+# the installers to a single rolling GitHub Release (tag: desktop-app), so
+# the website's download links never need to change between versions (the
 # release's asset filenames are fixed - see build.*.artifactName in
-# package.json).
+# package.json - and the links use GitHub's generic .../releases/latest/
+# endpoint, which resolves to whichever release is newest and published
+# regardless of its tag name).
 
 on:
   push:
@@ -67,10 +69,15 @@ jobs:
         with:
           path: artifacts
 
-      - name: Publish/update the "latest" release
+      - name: Publish/update the desktop-app release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
+          # Not literally "latest" - that tag got a release stuck in a bad
+          # draft state during setup. The website's download links use
+          # GitHub's generic /releases/latest/ endpoint (whichever release
+          # is newest and published, regardless of its tag name), so this
+          # can be any stable tag as long as make_latest keeps it current.
+          tag_name: desktop-app
           name: הגרסה העדכנית
           body: >
             נבנה אוטומטית מהקוד העדכני. קישורי ההורדה באתר תמיד מצביעים
@@ -80,3 +87,5 @@ jobs:
             artifacts/**/*.dmg
             artifacts/**/*.AppImage
           fail_on_unmatched_files: true
+          make_latest: true
+          draft: false
