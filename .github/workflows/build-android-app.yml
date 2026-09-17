@@ -22,6 +22,13 @@ on:
       - "dist/**"
   workflow_dispatch:
 
+# See build-desktop-app.yml's concurrency comment - same reasoning here,
+# and needed even more so since both workflows' publish steps touch the
+# very same release concurrently on a shared push.
+concurrency:
+  group: build-android-app-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

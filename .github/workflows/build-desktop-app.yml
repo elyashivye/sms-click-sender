@@ -17,6 +17,15 @@ on:
       - "dist/**"
   workflow_dispatch:
 
+# Two pushes in quick succession must never both reach the publish job at
+# once: their "gh release upload --clobber" calls raced on the same asset
+# name once ("ReleaseAsset.name already exists", HTTP 422) even though
+# --clobber is supposed to replace it - cancelling the superseded run
+# before it starts publishing removes the race entirely.
+concurrency:
+  group: build-desktop-app-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
