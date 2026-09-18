@@ -12,6 +12,7 @@ import { SaveContactsJob } from "./lib/contacts-job.js";
 import { WhatsAppGroupsImportJob } from "./lib/whatsapp-groups-job.js";
 import * as schedulesApi from "./lib/schedules-client.js";
 import { render, unknownPlaceholders } from "./lib/templating.js";
+import QRCode from "qrcode";
 
 const state = {
   adb: null,
@@ -836,6 +837,16 @@ function setupChannelPicker() {
   });
 }
 
+// Lets someone browsing on a computer scan with their phone's camera to
+// open this exact page there - mainly useful for the Android app, which
+// obviously has to be downloaded on the phone itself, not the computer.
+function renderDownloadQrCode() {
+  const canvas = el("download-qr-canvas");
+  QRCode.toCanvas(canvas, window.location.href, { width: 140, margin: 1 }, (err) => {
+    if (err) console.error("יצירת קוד ה-QR נכשלה:", err);
+  });
+}
+
 // ---------- wiring ----------
 
 if (!isWebUsbSupported()) {
@@ -863,6 +874,7 @@ setupSidebarNav();
 setupUsbGuideDrawer();
 setupChannelPicker();
 updateNavProgress();
+renderDownloadQrCode();
 
 if (isElectron()) {
   // Already running as the desktop app - a "download the desktop app" page
