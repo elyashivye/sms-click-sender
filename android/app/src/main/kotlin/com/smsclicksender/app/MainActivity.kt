@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
                 prefs.password = password
                 requestNeededPermissions()
                 enqueuePeriodicSync()
+                enqueueImmediateSync()
                 showConnectedUi(url)
                 refreshSchedules()
             } catch (e: Exception) {
@@ -94,6 +95,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleRunNow() {
         binding.statusText.text = getString(R.string.status_running_now)
+        enqueueImmediateSync()
+    }
+
+    private fun enqueueImmediateSync() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>().build()
         WorkManager.getInstance(this)
             .enqueueUniqueWork("manual-sync", ExistingWorkPolicy.REPLACE, request)
