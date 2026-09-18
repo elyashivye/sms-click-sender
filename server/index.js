@@ -230,7 +230,26 @@ app.post("/api/schedules/:id/ack", requireAuth, async (req, res) => {
 
 // ---------- static site ----------
 
-app.use(express.static(DIST_DIR));
+// Vite gives every build's JS/CSS a unique content hash in the filename
+// (e.g. index-CSCnGAg0.js) - once fetched under that exact name it never
+// changes, so caching those aggressively is free performance. index.html
+// itself keeps a fixed name and is what references those hashed
+// filenames, so it must always be revalidated: without this, a phone that
+// cached an old index.html keeps pointing at asset files a newer deploy
+// already deleted (Vite's build wipes dist/ clean each time), and the
+// page silently breaks - missing styles/JS - until the user manually
+// clears their browser cache.
+app.use(
+  express.static(DIST_DIR, {
+    setHeaders: (res, filePath) => {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  }),
+);
 
 app.listen(PORT, () => {
   console.log(`SMS Click Sender server listening on port ${PORT}`);
