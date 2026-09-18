@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity() {
             refreshSchedules()
             pulledSchedules = LocalCache.load(this)
             updatePulledUi()
+        } else {
+            binding.serverUrlInput.setText(DEFAULT_SERVER_URL)
         }
 
         observeManualRun()
@@ -357,5 +359,13 @@ class MainActivity : AppCompatActivity() {
         params.bottomMargin = 24
         row.layoutParams = params
         binding.schedulesContainer.addView(row)
+    }
+
+    companion object {
+        // This app is built for one specific deployment, not a generic
+        // multi-server client - pre-filling the address means the user
+        // only has to type the password, not also remember/type a URL.
+        // It's still an editable field in case the server ever moves.
+        private const val DEFAULT_SERVER_URL = "https://mediumpurple-stingray-338078.hostingersite.com"
     }
 }
