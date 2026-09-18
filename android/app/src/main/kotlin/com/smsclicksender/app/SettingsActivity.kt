@@ -1,5 +1,6 @@
 package com.smsclicksender.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.work.ExistingWorkPolicy
@@ -31,7 +32,21 @@ class SettingsActivity : AppCompatActivity() {
         binding.checkUpdatesButton.setOnClickListener { handleCheckUpdates() }
         observeManualUpdateCheck()
 
+        binding.shareCrashLogButton.setOnClickListener { handleShareCrashLog() }
         binding.closeButton.setOnClickListener { finish() }
+    }
+
+    private fun handleShareCrashLog() {
+        val log = CrashLogger.readLog(this)
+        if (log.isNullOrBlank()) {
+            binding.updateStatusText.text = getString(R.string.status_no_crash_log)
+            return
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, log)
+        }
+        startActivity(Intent.createChooser(intent, getString(R.string.btn_share_crash_log)))
     }
 
     private fun handleCheckUpdates() {

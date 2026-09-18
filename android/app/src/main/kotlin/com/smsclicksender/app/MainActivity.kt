@@ -124,8 +124,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleRunNow() {
-        binding.statusText.text = getString(R.string.status_running_now)
-        SyncScheduler.enqueueImmediate(this)
+        try {
+            binding.statusText.text = getString(R.string.status_running_now)
+            SyncScheduler.enqueueImmediate(this)
+        } catch (e: Exception) {
+            binding.statusText.text = "שגיאה בהפעלת הבדיקה: ${e.message}"
+        }
     }
 
     private fun observeManualRun() {

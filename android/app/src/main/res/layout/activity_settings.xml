@@ -84,6 +84,15 @@
             android:layout_marginBottom="24dp" />
 
         <Button
+            android:id="@+id/shareCrashLogButton"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_share_crash_log"
+            android:textColor="@color/text_muted"
+            android:layout_marginBottom="24dp" />
+
+        <Button
             android:id="@+id/closeButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

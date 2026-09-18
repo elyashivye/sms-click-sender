@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit
 class SmsClickSenderApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        CrashLogger.install(this)
         createNotificationChannels()
         subscribeToUpdateTopic()
         enqueuePeriodicUpdateCheck()
