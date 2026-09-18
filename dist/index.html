@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-CSCnGAg0.js"></script>
+  <script type="module" crossorigin src="./assets/index-C6rdzoWo.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CsvM-mw_.css">
 </head>
 <body>
@@ -297,13 +297,24 @@
         </p>
 
         <div id="schedules-setup">
-          <p class="hint">מגדירים פעם אחת: כתובת השרת (שם הדומיין שהעלית אליו את הפרויקט) והסיסמה.</p>
+          <p class="hint">
+            מתחברים עם חשבון אישי (מייל + סיסמה). יצירת חשבון חדש אפשרית רק
+            למיילים שאושרו מראש בשרת - אם המייל שלכם לא מוכר, פנו למי שמריץ
+            את השרת.
+          </p>
+          <div class="row">
+            <label><input type="radio" name="sched-mode" id="sched-mode-login" value="login" checked /> התחברות לחשבון קיים</label>
+            <label><input type="radio" name="sched-mode" id="sched-mode-signup" value="signup" /> יצירת חשבון חדש</label>
+          </div>
           <div class="row">
             <label>כתובת השרת <input type="text" id="sched-server-url" placeholder="https://example.com" /></label>
+          </div>
+          <div class="row">
+            <label>מייל <input type="email" id="sched-email" placeholder="you@example.com" /></label>
             <label>סיסמה <input type="password" id="sched-password" /></label>
           </div>
           <div class="row">
-            <button id="sched-connect-btn" type="button" class="primary">התחבר / הגדר סיסמה</button>
+            <button id="sched-connect-btn" type="button" class="primary">התחבר</button>
           </div>
           <p class="status-line" id="sched-setup-status"></p>
         </div>
