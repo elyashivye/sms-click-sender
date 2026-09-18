@@ -23,6 +23,25 @@ android {
         versionName = "1.0.$ciRunNumber"
     }
 
+    // Every CI build otherwise gets AGP's auto-generated debug key at
+    // ~/.android/debug.keystore - fine on one dev machine, but each
+    // GitHub Actions run starts a brand-new VM with no such file, so AGP
+    // would silently generate a DIFFERENT random key every single build.
+    // Android refuses to install an update signed with a different key
+    // than what's already on the device ("package conflicts with an
+    // existing package") - a fixed, committed keystore is what makes
+    // "every CI-published APK is really the previous one's update"
+    // actually true. Same alias/passwords as Android's own default debug
+    // keystore, so it's a drop-in replacement, not a new secret to manage.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
