@@ -37,9 +37,11 @@ class ServerApiException(message: String) : Exception(message)
  * Thin client for the same small scheduling API the website/desktop app
  * already talks to (server/index.js) - this app just polls
  * /api/schedules/due?runMode=phone instead of ?runMode=desktop, since it
- * has no local contact list/message of its own to fall back on.
+ * has no local contact list/message of its own to fall back on. Every
+ * call here needs an already-minted session token (see AccountClient for
+ * signup/login, which is how you get one).
  */
-class ServerClient(serverUrl: String, private val password: String) {
+class ServerClient(serverUrl: String, private val token: String) {
     private val baseUrl = serverUrl.trimEnd('/')
 
     private val client = OkHttpClient.Builder()
@@ -50,16 +52,7 @@ class ServerClient(serverUrl: String, private val password: String) {
     private val jsonMediaType = "application/json".toMediaType()
 
     private fun authorizedGet(path: String): Request =
-        Request.Builder().url("$baseUrl$path").addHeader("Authorization", "Bearer $password").build()
-
-    fun login() {
-        val body = JSONObject().put("password", password).toString().toRequestBody(jsonMediaType)
-        val request = Request.Builder().url("$baseUrl/api/login").post(body).build()
-        client.newCall(request).execute().use { response ->
-            val json = parseJsonOrEmpty(response)
-            if (!response.isSuccessful) throw ServerApiException(json.optString("error", "התחברות נכשלה"))
-        }
-    }
+        Request.Builder().url("$baseUrl$path").addHeader("Authorization", "Bearer $token").build()
 
     fun listPhoneSchedules(): List<ScheduleSummary> {
         client.newCall(authorizedGet("/api/schedules")).execute().use { response ->
@@ -149,7 +142,7 @@ class ServerClient(serverUrl: String, private val password: String) {
         val body = bodyJson.toString().toRequestBody(jsonMediaType)
         val request = Request.Builder()
             .url("$baseUrl/api/schedules/$scheduleId/ack")
-            .addHeader("Authorization", "Bearer $password")
+            .addHeader("Authorization", "Bearer $token")
             .post(body)
             .build()
         client.newCall(request).execute().close()

@@ -19,3 +19,10 @@ export function verifyPassword(password, stored) {
   if (candidate.length !== expected.length) return false;
   return crypto.timingSafeEqual(candidate, expected);
 }
+
+// Opaque session token minted at login and checked (not decoded) on every
+// authenticated request - the actual password is only ever sent once, at
+// login, rather than reused as the ongoing credential on every call.
+export function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}

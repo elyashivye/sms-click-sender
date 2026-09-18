@@ -18,63 +18,67 @@ async function parseOrThrow(res, fallbackMessage) {
   return data;
 }
 
-function authHeaders(password) {
-  return { Authorization: `Bearer ${password}` };
+function authHeaders(token) {
+  return { Authorization: `Bearer ${token}` };
 }
 
-export async function getSetupStatus(serverUrl) {
-  const res = await fetch(`${serverUrl}/api/setup/status`);
-  return parseOrThrow(res, "לא ניתן להתחבר לשרת");
-}
-
-export async function setupPassword(serverUrl, password) {
-  const res = await fetch(`${serverUrl}/api/setup`, {
+// Only allowed for the small, fixed set of emails the server owner
+// approved (ALLOWED_SIGNUP_EMAILS on the server) - anyone else gets a 403.
+export async function signup(serverUrl, email, password) {
+  const res = await fetch(`${serverUrl}/api/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ email, password }),
   });
-  return parseOrThrow(res, "שגיאה בהגדרת הסיסמה");
+  return parseOrThrow(res, "שגיאה ביצירת החשבון");
 }
 
-export async function login(serverUrl, password) {
+// Returns { token, email } - the token (not the password) is what gets
+// sent on every subsequent authenticated request.
+export async function login(serverUrl, email, password) {
   const res = await fetch(`${serverUrl}/api/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ email, password }),
   });
   return parseOrThrow(res, "התחברות נכשלה");
 }
 
-export async function listSchedules(serverUrl, password) {
-  const res = await fetch(`${serverUrl}/api/schedules`, { headers: authHeaders(password) });
+export async function logout(serverUrl, token) {
+  const res = await fetch(`${serverUrl}/api/logout`, { method: "POST", headers: authHeaders(token) });
+  return parseOrThrow(res, "שגיאה בהתנתקות");
+}
+
+export async function listSchedules(serverUrl, token) {
+  const res = await fetch(`${serverUrl}/api/schedules`, { headers: authHeaders(token) });
   const data = await parseOrThrow(res, "שגיאה בטעינת תזמונים");
   return data.schedules;
 }
 
-export async function createSchedule(serverUrl, password, { label, recurrence, runMode, payload }) {
+export async function createSchedule(serverUrl, token, { label, recurrence, runMode, payload }) {
   const res = await fetch(`${serverUrl}/api/schedules`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders(password) },
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
     body: JSON.stringify({ label, recurrence, runMode, payload }),
   });
   const data = await parseOrThrow(res, "שגיאה ביצירת תזמון");
   return data.schedule;
 }
 
-export async function updateSchedule(serverUrl, password, id, patch) {
+export async function updateSchedule(serverUrl, token, id, patch) {
   const res = await fetch(`${serverUrl}/api/schedules/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...authHeaders(password) },
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
     body: JSON.stringify(patch),
   });
   const data = await parseOrThrow(res, "שגיאה בעדכון תזמון");
   return data.schedule;
 }
 
-export async function deleteSchedule(serverUrl, password, id) {
+export async function deleteSchedule(serverUrl, token, id) {
   const res = await fetch(`${serverUrl}/api/schedules/${id}`, {
     method: "DELETE",
-    headers: authHeaders(password),
+    headers: authHeaders(token),
   });
   return parseOrThrow(res, "שגיאה במחיקת תזמון");
 }

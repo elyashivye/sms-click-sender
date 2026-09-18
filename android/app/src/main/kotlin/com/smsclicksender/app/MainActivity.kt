@@ -52,7 +52,8 @@ class MainActivity : AppCompatActivity() {
 
         if (prefs.isConfigured()) {
             binding.serverUrlInput.setText(prefs.serverUrl)
-            showConnectedUi(prefs.serverUrl!!)
+            binding.emailInput.setText(prefs.email)
+            showConnectedUi(prefs.serverUrl!!, prefs.email!!)
             requestNeededPermissions()
             refreshSchedules()
             pulledSchedules = LocalCache.load(this)
@@ -66,20 +67,27 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleConnect() {
         val url = binding.serverUrlInput.text.toString().trim().trimEnd('/')
+        val email = binding.emailInput.text.toString().trim()
         val password = binding.passwordInput.text.toString()
-        if (url.isEmpty() || password.isEmpty()) {
-            binding.statusText.text = getString(R.string.hint_server_url)
+        val isSignup = binding.authModeSignup.isChecked
+        if (url.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            binding.statusText.text = getString(R.string.hint_missing_fields)
             return
         }
 
-        binding.statusText.text = getString(R.string.status_connecting)
+        binding.statusText.text =
+            getString(if (isSignup) R.string.status_creating_account else R.string.status_connecting)
         binding.connectButton.isEnabled = false
 
         lifecycleScope.launch {
             try {
-                withContext(Dispatchers.IO) { ServerClient(url, password).login() }
+                val token = withContext(Dispatchers.IO) {
+                    if (isSignup) AccountClient.signup(url, email, password)
+                    AccountClient.login(url, email, password)
+                }
                 prefs.serverUrl = url
-                prefs.password = password
+                prefs.email = email
+                prefs.token = token
                 requestNeededPermissions()
                 // Only the automatic mode (the default) starts anything on
                 // its own - the manual mode chosen in Settings leaves
@@ -88,7 +96,7 @@ class MainActivity : AppCompatActivity() {
                     SyncScheduler.enqueuePeriodic(this@MainActivity)
                     SyncScheduler.enqueueImmediate(this@MainActivity)
                 }
-                showConnectedUi(url)
+                showConnectedUi(url, email)
                 refreshSchedules()
             } catch (e: Exception) {
                 binding.statusText.text = "שגיאה: ${e.message}"
@@ -132,8 +140,8 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    private fun showConnectedUi(url: String) {
-        binding.statusText.text = getString(R.string.status_connected, url)
+    private fun showConnectedUi(url: String, email: String) {
+        binding.statusText.text = getString(R.string.status_connected, url, email)
         binding.connectButton.visibility = View.GONE
         binding.disconnectButton.visibility = View.VISIBLE
         binding.runNowButton.visibility = View.VISIBLE
@@ -152,11 +160,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshSchedules() {
         val url = prefs.serverUrl ?: return
-        val password = prefs.password ?: return
+        val token = prefs.token ?: return
 
         lifecycleScope.launch {
             try {
-                val schedules = withContext(Dispatchers.IO) { ServerClient(url, password).listPhoneSchedules() }
+                val schedules = withContext(Dispatchers.IO) { ServerClient(url, token).listPhoneSchedules() }
                 renderSchedules(schedules)
             } catch (e: Exception) {
                 binding.schedulesContainer.removeAllViews()
@@ -217,7 +225,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun handlePullSelected() {
         val url = prefs.serverUrl ?: return
-        val password = prefs.password ?: return
+        val token = prefs.token ?: return
         val ids = selectedScheduleIds.toList()
         if (ids.isEmpty()) return
 
@@ -227,7 +235,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val client = ServerClient(url, password)
+                val client = ServerClient(url, token)
                 val fetched = withContext(Dispatchers.IO) { ids.map { id -> client.fetchSchedulePayload(id) } }
                 pulledSchedules = fetched
                 LocalCache.save(this@MainActivity, fetched)
@@ -261,7 +269,7 @@ class MainActivity : AppCompatActivity() {
         val toSend = pulledSchedules
         if (toSend.isEmpty()) return
         val url = prefs.serverUrl
-        val password = prefs.password
+        val token = prefs.token
 
         binding.sendPulledButton.isEnabled = false
         binding.pullSelectedButton.isEnabled = false
@@ -312,10 +320,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                if (url != null && password != null) {
+                if (url != null && token != null) {
                     try {
                         withContext(Dispatchers.IO) {
-                            ServerClient(url, password).ack(
+                            ServerClient(url, token).ack(
                                 scheduleId = schedule.id,
                                 status = if (failedCount == 0) "success" else "failure",
                                 sentCount = sentCount,
@@ -364,8 +372,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         // This app is built for one specific deployment, not a generic
         // multi-server client - pre-filling the address means the user
-        // only has to type the password, not also remember/type a URL.
-        // It's still an editable field in case the server ever moves.
+        // only has to enter their own email+password, not also
+        // remember/type a URL. Still an editable field in case the server
+        // ever moves.
         private const val DEFAULT_SERVER_URL = "https://mediumpurple-stingray-338078.hostingersite.com"
     }
 }

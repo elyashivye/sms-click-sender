@@ -1,7 +1,12 @@
 // Single Node app: serves the built website (dist/) as static files AND a
-// small JSON API under /api/* for scheduled/recurring sends. For a
-// "desktop"-run schedule (the default, and the only mode that existed
-// before phone-run schedules), the API only ever stores scheduling
+// small JSON API under /api/* for scheduled/recurring sends. Multi-user:
+// each person creates their own account (POST /api/signup, gated by the
+// ALLOWED_SIGNUP_EMAILS allowlist below) and every schedule belongs to
+// exactly one user (ownerId) - nobody sees anyone else's schedules, even
+// though they share one server/database.
+//
+// For a "desktop"-run schedule (the default, and the only mode that
+// existed before phone-run schedules), the API only ever stores scheduling
 // metadata (label, timing, status) - never contact lists or message text,
 // which stay local to whichever computer's Electron app has the phone
 // plugged in. A "phone"-run schedule is the deliberate exception: the
@@ -14,7 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 
-import { hashPassword, verifyPassword } from "./auth.js";
+import { generateToken, hashPassword, verifyPassword } from "./auth.js";
 import { readDb, updateDb } from "./db.js";
 import { computeNextRun, validatePhonePayload, validateRecurrence } from "./schedule.js";
 
@@ -27,7 +32,7 @@ app.use(express.json());
 
 // Permissive CORS on the API only: the Electron app's renderer calls this
 // server from a different origin (file://, or app://) and there's no
-// session/cookie involved - the password bearer token is the real guard.
+// session/cookie involved - the session token is the real guard.
 app.use("/api", (req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -36,51 +41,94 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-// ---------- setup / auth ----------
+// ---------- accounts ----------
 
-app.get("/api/setup/status", async (req, res) => {
-  const db = await readDb();
-  res.json({ configured: !!db.passwordHash });
-});
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
 
-app.post("/api/setup", async (req, res) => {
+// Closed registration: only emails the server owner explicitly approved can
+// ever create an account, even though the repo (and so this source file)
+// is public - the actual list lives in an env var set on the host, never
+// committed to git, so it never leaks who's allowed to sign up.
+function allowedSignupEmails() {
+  return String(process.env.ALLOWED_SIGNUP_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+app.post("/api/signup", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
   const { password } = req.body || {};
+
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ error: "כתובת אימייל לא תקינה" });
+  }
   if (!password || String(password).length < 4) {
-    return res.status(400).json({ error: "יש להגדיר סיסמה של לפחות 4 תווים" });
+    return res.status(400).json({ error: "יש לבחור סיסמה של לפחות 4 תווים" });
+  }
+
+  const allowed = allowedSignupEmails();
+  if (!allowed.includes(email)) {
+    return res.status(403).json({ error: "כתובת המייל הזו לא מורשית ליצור חשבון" });
   }
 
   const db = await readDb();
-  if (db.passwordHash) {
-    return res.status(409).json({ error: "כבר הוגדרה סיסמה. אם שכחת אותה, מחקו את data/db.json בשרת." });
+  if (db.users.some((u) => u.email === email)) {
+    return res.status(409).json({ error: "כבר קיים חשבון עם המייל הזה" });
   }
 
-  await updateDb((current) => ({ ...current, passwordHash: hashPassword(String(password)) }));
-  res.json({ ok: true });
+  const user = {
+    id: crypto.randomUUID(),
+    email,
+    passwordHash: hashPassword(String(password)),
+    createdAt: new Date().toISOString(),
+  };
+  await updateDb((current) => ({ ...current, users: [...current.users, user] }));
+  res.status(201).json({ ok: true });
 });
 
 app.post("/api/login", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
   const { password } = req.body || {};
+
   const db = await readDb();
-  if (!db.passwordHash) return res.status(409).json({ error: "עדיין לא הוגדרה סיסמה" });
-  if (!verifyPassword(String(password || ""), db.passwordHash)) {
-    return res.status(401).json({ error: "סיסמה שגויה" });
+  const user = db.users.find((u) => u.email === email);
+  if (!user || !verifyPassword(String(password || ""), user.passwordHash)) {
+    return res.status(401).json({ error: "מייל או סיסמה שגויים" });
   }
-  res.json({ ok: true });
+
+  const token = generateToken();
+  await updateDb((current) => ({
+    ...current,
+    sessions: [...current.sessions, { token, userId: user.id, createdAt: new Date().toISOString() }],
+  }));
+  res.json({ token, email: user.email });
 });
 
 async function requireAuth(req, res, next) {
-  const db = await readDb();
-  if (!db.passwordHash) {
-    return res.status(409).json({ error: "עדיין לא הוגדרה סיסמה בשרת" });
-  }
   const header = req.get("authorization") || "";
-  const password = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!verifyPassword(password, db.passwordHash)) {
-    return res.status(401).json({ error: "לא מורשה - סיסמה שגויה או חסרה" });
-  }
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!token) return res.status(401).json({ error: "לא מורשה - יש להתחבר" });
+
+  const db = await readDb();
+  const session = db.sessions.find((s) => s.token === token);
+  if (!session) return res.status(401).json({ error: "לא מורשה - יש להתחבר מחדש" });
+
   req.db = db;
+  req.userId = session.userId;
+  req.token = token;
   next();
 }
+
+app.post("/api/logout", requireAuth, async (req, res) => {
+  await updateDb((current) => ({
+    ...current,
+    sessions: current.sessions.filter((s) => s.token !== req.token),
+  }));
+  res.json({ ok: true });
+});
 
 // ---------- schedules ----------
 
@@ -88,7 +136,9 @@ app.get("/api/schedules", requireAuth, async (req, res) => {
   // The list view never needs the actual contacts/message content (only
   // used when a phone-run schedule is fetched via /due) - strip it here so
   // a large contact list isn't re-sent on every schedules-page refresh.
-  const schedules = req.db.schedules.map(({ payload, ...rest }) => rest);
+  const schedules = req.db.schedules
+    .filter((s) => s.ownerId === req.userId)
+    .map(({ payload, ...rest }) => rest);
   res.json({ schedules });
 });
 
@@ -109,6 +159,7 @@ app.post("/api/schedules", requireAuth, async (req, res) => {
   const now = new Date();
   const schedule = {
     id: crypto.randomUUID(),
+    ownerId: req.userId,
     label: String(label).trim(),
     recurrence,
     runMode: resolvedRunMode,
@@ -139,7 +190,7 @@ app.patch("/api/schedules/:id", requireAuth, async (req, res) => {
   const next = await updateDb((db) => ({
     ...db,
     schedules: db.schedules.map((s) => {
-      if (s.id !== id) return s;
+      if (s.id !== id || s.ownerId !== req.userId) return s;
       found = true;
       const updated = { ...s };
       if (label !== undefined) updated.label = String(label).trim();
@@ -160,8 +211,13 @@ app.delete("/api/schedules/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   let found = false;
   await updateDb((db) => {
-    const schedules = db.schedules.filter((s) => s.id !== id);
-    found = schedules.length !== db.schedules.length;
+    const schedules = db.schedules.filter((s) => {
+      if (s.id === id && s.ownerId === req.userId) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
     return { ...db, schedules };
   });
   if (!found) return res.status(404).json({ error: "תזמון לא נמצא" });
@@ -180,7 +236,14 @@ app.get("/api/schedules/due", requireAuth, async (req, res) => {
   const runMode = req.query.runMode === "phone" ? "phone" : "desktop";
   const now = new Date();
   const due = req.db.schedules
-    .filter((s) => s.runMode === runMode && s.enabled && s.nextRunAt && new Date(s.nextRunAt) <= now)
+    .filter(
+      (s) =>
+        s.ownerId === req.userId &&
+        s.runMode === runMode &&
+        s.enabled &&
+        s.nextRunAt &&
+        new Date(s.nextRunAt) <= now,
+    )
     .map((s) => (runMode === "phone" ? s : { ...s, payload: undefined }));
   res.json({ due });
 });
@@ -193,7 +256,7 @@ app.get("/api/schedules/due", requireAuth, async (req, res) => {
 // recurrence timer).
 app.get("/api/schedules/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
-  const schedule = req.db.schedules.find((s) => s.id === id);
+  const schedule = req.db.schedules.find((s) => s.id === id && s.ownerId === req.userId);
   if (!schedule) return res.status(404).json({ error: "תזמון לא נמצא" });
   res.json({ schedule });
 });
@@ -210,7 +273,7 @@ app.post("/api/schedules/:id/ack", requireAuth, async (req, res) => {
   const next = await updateDb((db) => ({
     ...db,
     schedules: db.schedules.map((s) => {
-      if (s.id !== id) return s;
+      if (s.id !== id || s.ownerId !== req.userId) return s;
       found = true;
       const isOneOff = s.recurrence.type === "once";
       return {

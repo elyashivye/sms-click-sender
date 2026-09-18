@@ -12,13 +12,18 @@
     <string name="sync_notification_done_with_failures">נשלחו %1$d הודעות, %2$d נכשלו</string>
 
     <string name="hint_server_url">כתובת השרת (למשל https://example.com)</string>
+    <string name="hint_email">מייל</string>
     <string name="hint_password">סיסמה</string>
+    <string name="auth_mode_login">התחברות לחשבון קיים</string>
+    <string name="auth_mode_signup">יצירת חשבון חדש</string>
     <string name="btn_connect">התחבר</string>
     <string name="btn_run_now">בדוק ושלח עכשיו</string>
     <string name="btn_disconnect">התנתק</string>
     <string name="status_not_connected">לא מחובר לשרת</string>
     <string name="status_connecting">מתחבר…</string>
-    <string name="status_connected">מחובר: %1$s</string>
+    <string name="status_creating_account">יוצר חשבון…</string>
+    <string name="status_connected">מחובר: %1$s (%2$s)</string>
+    <string name="hint_missing_fields">יש למלא כתובת שרת, מייל וסיסמה.</string>
     <string name="status_sms_permission_needed">יש לאשר הרשאת שליחת SMS כדי שהאפליקציה תוכל לעבוד</string>
     <string name="status_no_schedules">אין תזמונים מהטלפון בחשבון הזה עדיין. אפשר ליצור אחד באתר/בתוכנה, בעמוד תזמונים, ולבחור \"מהטלפון\".</string>
     <string name="status_running_now">בודק ושולח…</string>

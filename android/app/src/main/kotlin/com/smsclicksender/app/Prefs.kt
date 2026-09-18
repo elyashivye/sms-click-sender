@@ -6,10 +6,10 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 /**
- * Stores the server URL + password (the same shared password used by the
- * website/desktop app's own login) encrypted at rest via the Android
- * Keystore - the on-device equivalent of Electron's safeStorage use for
- * the same credential on the desktop side.
+ * Stores the server URL, the signed-in account's email, and its session
+ * token (not the password itself - only sent once, at login) encrypted at
+ * rest via the Android Keystore - the on-device equivalent of Electron's
+ * safeStorage use for the same credential on the desktop side.
  */
 class Prefs(context: Context) {
     private val prefs: SharedPreferences by lazy {
@@ -29,9 +29,13 @@ class Prefs(context: Context) {
         get() = prefs.getString(KEY_SERVER_URL, null)
         set(value) = prefs.edit().putString(KEY_SERVER_URL, value).apply()
 
-    var password: String?
-        get() = prefs.getString(KEY_PASSWORD, null)
-        set(value) = prefs.edit().putString(KEY_PASSWORD, value).apply()
+    var email: String?
+        get() = prefs.getString(KEY_EMAIL, null)
+        set(value) = prefs.edit().putString(KEY_EMAIL, value).apply()
+
+    var token: String?
+        get() = prefs.getString(KEY_TOKEN, null)
+        set(value) = prefs.edit().putString(KEY_TOKEN, value).apply()
 
     // Default true: preserves the original "connect once, it all runs
     // automatically in the background" behavior unless the user opts into
@@ -40,7 +44,7 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean(KEY_BACKGROUND_SYNC, true)
         set(value) = prefs.edit().putBoolean(KEY_BACKGROUND_SYNC, value).apply()
 
-    fun isConfigured(): Boolean = !serverUrl.isNullOrBlank() && !password.isNullOrBlank()
+    fun isConfigured(): Boolean = !serverUrl.isNullOrBlank() && !email.isNullOrBlank() && !token.isNullOrBlank()
 
     fun clear() {
         prefs.edit().clear().apply()
@@ -48,7 +52,8 @@ class Prefs(context: Context) {
 
     companion object {
         private const val KEY_SERVER_URL = "server_url"
-        private const val KEY_PASSWORD = "password"
+        private const val KEY_EMAIL = "email"
+        private const val KEY_TOKEN = "token"
         private const val KEY_BACKGROUND_SYNC = "background_sync_enabled"
     }
 }

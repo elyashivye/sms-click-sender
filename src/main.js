@@ -24,7 +24,7 @@ const state = {
   groupsImportJob: null,
   availableGroups: [],
   hasSentOnce: false,
-  serverConfig: null, // { url, password } - only used in Electron
+  serverConfig: null, // { url, email, token } - only used in Electron
 };
 
 const el = (id) => document.getElementById(id);
@@ -549,6 +549,7 @@ async function loadServerConfig() {
   state.serverConfig = await window.smsSender.getServerConfig();
   if (state.serverConfig) {
     el("sched-server-url").value = state.serverConfig.url;
+    el("sched-email").value = state.serverConfig.email;
     await showSchedulesMain();
   }
 }
@@ -556,22 +557,22 @@ async function loadServerConfig() {
 async function handleSchedConnect() {
   const statusEl = el("sched-setup-status");
   const url = el("sched-server-url").value.trim().replace(/\/+$/, "");
+  const email = el("sched-email").value.trim();
   const password = el("sched-password").value;
+  const isSignup = el("sched-mode-signup").checked;
 
-  if (!url || !password) {
-    statusEl.textContent = "יש למלא כתובת שרת וסיסמה.";
+  if (!url || !email || !password) {
+    statusEl.textContent = "יש למלא כתובת שרת, מייל וסיסמה.";
     return;
   }
 
-  statusEl.textContent = "בודק...";
+  statusEl.textContent = isSignup ? "יוצר חשבון..." : "מתחבר...";
   try {
-    const { configured } = await schedulesApi.getSetupStatus(url);
-    if (!configured) {
-      await schedulesApi.setupPassword(url, password);
-    } else {
-      await schedulesApi.login(url, password);
+    if (isSignup) {
+      await schedulesApi.signup(url, email, password);
     }
-    state.serverConfig = await window.smsSender.setServerConfig({ url, password });
+    const { token } = await schedulesApi.login(url, email, password);
+    state.serverConfig = await window.smsSender.setServerConfig({ url, email, token });
     statusEl.textContent = "";
     await showSchedulesMain();
   } catch (err) {
@@ -582,14 +583,14 @@ async function handleSchedConnect() {
 async function showSchedulesMain() {
   el("schedules-setup").hidden = true;
   el("schedules-main").hidden = false;
-  el("sched-connected-as").textContent = `מחובר לשרת: ${state.serverConfig.url}`;
+  el("sched-connected-as").textContent = `מחובר לשרת: ${state.serverConfig.url} (${state.serverConfig.email})`;
   await refreshSchedulesList();
 }
 
 async function refreshSchedulesList() {
   const tbody = document.querySelector("#schedules-table tbody");
   try {
-    const schedules = await schedulesApi.listSchedules(state.serverConfig.url, state.serverConfig.password);
+    const schedules = await schedulesApi.listSchedules(state.serverConfig.url, state.serverConfig.token);
     tbody.innerHTML = schedules
       .map(
         (s) => `
@@ -607,7 +608,7 @@ async function refreshSchedulesList() {
 
     tbody.querySelectorAll("[data-toggle-id]").forEach((checkbox) => {
       checkbox.addEventListener("change", async () => {
-        await schedulesApi.updateSchedule(state.serverConfig.url, state.serverConfig.password, checkbox.dataset.toggleId, {
+        await schedulesApi.updateSchedule(state.serverConfig.url, state.serverConfig.token, checkbox.dataset.toggleId, {
           enabled: checkbox.checked,
         });
       });
@@ -616,7 +617,7 @@ async function refreshSchedulesList() {
       button.addEventListener("click", async () => {
         const id = button.dataset.deleteId;
         if (!confirm("למחוק את התזמון הזה?")) return;
-        await schedulesApi.deleteSchedule(state.serverConfig.url, state.serverConfig.password, id);
+        await schedulesApi.deleteSchedule(state.serverConfig.url, state.serverConfig.token, id);
         await window.smsSender.deleteLocalJob(id);
         await refreshSchedulesList();
       });
@@ -658,7 +659,7 @@ async function handleCreateSchedule() {
 
   statusEl.textContent = "יוצר תזמון...";
   try {
-    const schedule = await schedulesApi.createSchedule(state.serverConfig.url, state.serverConfig.password, {
+    const schedule = await schedulesApi.createSchedule(state.serverConfig.url, state.serverConfig.token, {
       label,
       recurrence,
       runMode,

@@ -45,7 +45,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             // that's not a reason to abandon the sync itself.
         }
 
-        val client = ServerClient(prefs.serverUrl!!, prefs.password!!)
+        val client = ServerClient(prefs.serverUrl!!, prefs.token!!)
         val due = try {
             client.fetchDueSchedules()
         } catch (e: Exception) {

@@ -1,8 +1,9 @@
-// Local-only settings for the desktop app: which server to poll, its
-// password, and the actual content (contact rows + message template) for
-// each schedule this machine is responsible for running. None of this ever
-// leaves the machine except the password, sent to the server the user
-// configured, to authenticate the polling/ack requests.
+// Local-only settings for the desktop app: which server to poll, the
+// signed-in account's session token, and the actual content (contact rows
+// + message template) for each schedule this machine is responsible for
+// running. None of this ever leaves the machine except the token, sent to
+// the server the user configured, to authenticate the polling/ack
+// requests - the password itself is only ever sent once, at login.
 
 import { app, safeStorage } from "electron";
 import fs from "node:fs";
@@ -14,7 +15,7 @@ function readRaw() {
   try {
     return JSON.parse(fs.readFileSync(STORE_FILE, "utf8"));
   } catch {
-    return { serverUrl: null, serverPasswordEncrypted: null, localJobs: {} };
+    return { serverUrl: null, email: null, tokenEncrypted: null, localJobs: {} };
   }
 }
 
@@ -45,18 +46,27 @@ function decrypt(base64) {
 
 export function getServerConfig() {
   const data = readRaw();
-  if (!data.serverUrl || !data.serverPasswordEncrypted) return null;
-  const password = decrypt(data.serverPasswordEncrypted);
-  if (password === null) return null;
-  return { url: data.serverUrl, password };
+  if (!data.serverUrl || !data.email || !data.tokenEncrypted) return null;
+  const token = decrypt(data.tokenEncrypted);
+  if (token === null) return null;
+  return { url: data.serverUrl, email: data.email, token };
 }
 
-export function setServerConfig({ url, password }) {
+export function setServerConfig({ url, email, token }) {
   const data = readRaw();
   data.serverUrl = String(url).replace(/\/+$/, "");
-  data.serverPasswordEncrypted = encrypt(String(password));
+  data.email = String(email);
+  data.tokenEncrypted = encrypt(String(token));
   writeRaw(data);
   return getServerConfig();
+}
+
+export function clearServerConfig() {
+  const data = readRaw();
+  data.serverUrl = null;
+  data.email = null;
+  data.tokenEncrypted = null;
+  writeRaw(data);
 }
 
 export function getLocalJob(scheduleId) {

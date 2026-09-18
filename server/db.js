@@ -1,9 +1,10 @@
 // Tiny JSON-file "database" - no native modules, so it runs anywhere Node
 // runs (including constrained shared hosting where compiling something like
-// better-sqlite3 can fail). The data here is intentionally tiny: a password
-// hash and a handful of schedule records. Writes are serialized through a
-// single in-process queue and written atomically (write to a temp file,
-// then rename) so a crash mid-write can't corrupt the file.
+// better-sqlite3 can fail). The data here is intentionally tiny: a handful
+// of user accounts, their session tokens, and their schedule records.
+// Writes are serialized through a single in-process queue and written
+// atomically (write to a temp file, then rename) so a crash mid-write
+// can't corrupt the file.
 
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
@@ -13,11 +14,15 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 const DEFAULT_DB = {
-  // { salt: hex, hash: hex } - set once via POST /api/setup.
-  passwordHash: null,
+  // { id, email, passwordHash: {salt, hash}, createdAt } - created via
+  // POST /api/signup, gated by the ALLOWED_SIGNUP_EMAILS allowlist.
+  users: [],
+  // { token, userId, createdAt } - minted at login, deleted on logout.
+  sessions: [],
   // Desktop-run schedules hold only scheduling metadata. Phone-run ones
   // (runMode: "phone") also carry a payload field with the actual contacts
-  // + message content - see the comment at the top of index.js.
+  // + message content - see the comment at the top of index.js. Every
+  // schedule belongs to exactly one user (ownerId).
   schedules: [],
 };
 

@@ -42,7 +42,7 @@ async function tick(getWindow) {
   let due;
   try {
     const res = await fetch(`${config.url}/api/schedules/due?runMode=desktop`, {
-      headers: { Authorization: `Bearer ${config.password}` },
+      headers: { Authorization: `Bearer ${config.token}` },
     });
     if (!res.ok) {
       console.error("[scheduler] GET /api/schedules/due ->", res.status);
@@ -86,7 +86,7 @@ async function runOne(getWindow, config, schedule) {
   try {
     await fetch(`${config.url}/api/schedules/${schedule.id}/ack`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.password}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.token}` },
       body: JSON.stringify(ackBody),
     });
   } catch (err) {
