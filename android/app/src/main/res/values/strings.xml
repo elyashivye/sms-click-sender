@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">שליחת SMS מהטלפון</string>
     <string name="notification_channel_name">סנכרון ושליחה</string>
+    <string name="update_channel_name">עדכוני גרסה</string>
+    <string name="update_notification_title">גרסה חדשה מוכנה להתקנה</string>
+    <string name="update_notification_text">גרסה %1$s הורדה - לחצו כאן להתקנה</string>
 
     <string name="sync_notification_syncing">בודק תזמונים…</string>
     <string name="sync_notification_sending">שולח: %1$s</string>
@@ -34,6 +37,12 @@
     <string name="settings_title">הגדרות</string>
     <string name="settings_background_sync_label">סנכרון אוטומטי ברקע (כל 15 דק׳)</string>
     <string name="settings_background_sync_hint">כשמופעל, האפליקציה בודקת ושולחת תזמונים אוטומטית ברקע - גם כשהיא סגורה - וגם מתחילה שליחה מיד עם ההתחברות. כשמכובה, שום דבר לא נשלח אוטומטית: יש למשוך ולשלוח תזמונים באופן ידני מתוך מסך הבית, ולקבל דו\"ח מפורט על כל שליחה.</string>
+
+    <string name="settings_updates_title">עדכוני גרסה</string>
+    <string name="settings_current_version">גרסה מותקנת: %1$s</string>
+    <string name="btn_check_updates">בדוק עדכונים עכשיו</string>
+    <string name="status_checking_updates">בודק אם יש גרסה חדשה…</string>
+    <string name="status_update_check_done">הבדיקה הסתיימה - אם נמצאה גרסה חדשה, תופיע התראה להתקנה.</string>
 
     <string name="report_title">דו\"ח שליחה</string>
     <string name="report_summary_all_ok">כל ה-%1$d ההודעות נשלחו בהצלחה.</string>

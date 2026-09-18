@@ -61,17 +61,24 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - uses: actions/download-artifact@v4
         with:
           name: android-apk
           path: artifacts
 
-      - name: Publish the APK to the desktop-app release
+      - name: Publish the APK + version manifest to the desktop-app release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           REPO="${{ github.repository }}"
+          VERSION_CODE="${{ github.run_number }}"
 
           if ! gh release view desktop-app --repo "$REPO" >/dev/null 2>&1; then
             gh release create desktop-app --repo "$REPO" \
@@ -82,4 +89,27 @@ jobs:
 
           # Stable filename regardless of what Gradle itself named the APK.
           cp artifacts/*.apk artifacts/SMS-Click-Sender.apk
-          gh release upload desktop-app --repo "$REPO" --clobber artifacts/SMS-Click-Sender.apk
+
+          # The in-app update checker (UpdateChecker.kt) fetches this same
+          # stable filename and compares versionCode against its own
+          # BuildConfig.VERSION_CODE - keep it in sync with
+          # app/build.gradle.kts, which derives versionCode from this same
+          # GITHUB_RUN_NUMBER value.
+          cat > artifacts/android-version.json << JSON
+          {"versionCode": $VERSION_CODE, "versionName": "1.0.$VERSION_CODE", "notes": "עדכון חדש זמין"}
+          JSON
+
+          gh release upload desktop-app --repo "$REPO" --clobber \
+            artifacts/SMS-Click-Sender.apk artifacts/android-version.json
+
+      - name: Notify installed apps of the new version (FCM push)
+        env:
+          FCM_SERVICE_ACCOUNT_KEY: ${{ secrets.FCM_SERVICE_ACCOUNT_KEY }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          if [ -z "$FCM_SERVICE_ACCOUNT_KEY" ]; then
+            echo "FCM_SERVICE_ACCOUNT_KEY secret not set yet - skipping the push (see README for Firebase setup steps). The APK/manifest were still published normally, and the app's periodic update check still finds this release."
+            exit 0
+          fi
+          npm install --no-save firebase-admin@13
+          node android/ci/send-update-push.mjs
