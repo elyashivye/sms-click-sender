@@ -13,7 +13,6 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.random.Random
 
 /**
  * Runs on a WorkManager schedule (see MainActivity for the periodic
@@ -88,7 +87,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 }
 
                 if (index < payload.rows.size - 1) {
-                    delay(jitteredDelayMs(payload.delaySeconds))
+                    delay(SendTiming.jitteredDelayMs(payload.delaySeconds))
                 }
             }
 
@@ -112,12 +111,6 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
         showResultNotification(totalSent, totalFailed)
         Result.success()
-    }
-
-    private fun jitteredDelayMs(delaySeconds: Double): Long {
-        val base = (delaySeconds.coerceAtLeast(0.0)) * 1000
-        val jitter = base * 0.2 * (Random.nextDouble() * 2 - 1)
-        return (base + jitter).toLong().coerceAtLeast(500L)
     }
 
     private fun foregroundInfo(text: String): ForegroundInfo {

@@ -94,33 +94,52 @@ class ServerClient(serverUrl: String, private val password: String) {
             for (i in 0 until due.length()) {
                 val s = due.getJSONObject(i)
                 val payloadJson = s.optJSONObject("payload") ?: continue
-                val rowsJson = payloadJson.optJSONArray("rows") ?: JSONArray()
-                val rows = mutableListOf<Map<String, String>>()
-                for (r in 0 until rowsJson.length()) {
-                    val rowJson = rowsJson.getJSONObject(r)
-                    val row = mutableMapOf<String, String>()
-                    val keys = rowJson.keys()
-                    while (keys.hasNext()) {
-                        val key = keys.next()
-                        row[key] = rowJson.optString(key, "")
-                    }
-                    rows.add(row)
-                }
-                result.add(
-                    DueSchedule(
-                        id = s.getString("id"),
-                        label = s.getString("label"),
-                        payload = PhonePayload(
-                            rows = rows,
-                            template = payloadJson.optString("template", ""),
-                            phoneColumn = payloadJson.optString("phoneColumn", ""),
-                            delaySeconds = payloadJson.optDouble("delaySeconds", 4.0),
-                        ),
-                    ),
-                )
+                result.add(parseDueSchedule(s, payloadJson))
             }
             return result
         }
+    }
+
+    /**
+     * Fetches one schedule's full contacts+message content on demand,
+     * regardless of whether it's currently "due" by its recurrence - used
+     * by the manual "pull the schedules I picked, right now" flow, where
+     * the point is the user's own choice, not the recurrence timer.
+     */
+    fun fetchSchedulePayload(id: String): DueSchedule {
+        client.newCall(authorizedGet("/api/schedules/$id")).execute().use { response ->
+            val json = parseJsonOrEmpty(response)
+            if (!response.isSuccessful) throw ServerApiException(json.optString("error", "שגיאה בטעינת התזמון"))
+            val s = json.getJSONObject("schedule")
+            val payloadJson = s.optJSONObject("payload")
+                ?: throw ServerApiException("לתזמון הזה אין תוכן לשליחה מהטלפון")
+            return parseDueSchedule(s, payloadJson)
+        }
+    }
+
+    private fun parseDueSchedule(s: JSONObject, payloadJson: JSONObject): DueSchedule {
+        val rowsJson = payloadJson.optJSONArray("rows") ?: JSONArray()
+        val rows = mutableListOf<Map<String, String>>()
+        for (r in 0 until rowsJson.length()) {
+            val rowJson = rowsJson.getJSONObject(r)
+            val row = mutableMapOf<String, String>()
+            val keys = rowJson.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                row[key] = rowJson.optString(key, "")
+            }
+            rows.add(row)
+        }
+        return DueSchedule(
+            id = s.getString("id"),
+            label = s.getString("label"),
+            payload = PhonePayload(
+                rows = rows,
+                template = payloadJson.optString("template", ""),
+                phoneColumn = payloadJson.optString("phoneColumn", ""),
+                delaySeconds = payloadJson.optDouble("delaySeconds", 4.0),
+            ),
+        )
     }
 
     fun ack(scheduleId: String, status: String, sentCount: Int?, message: String?) {

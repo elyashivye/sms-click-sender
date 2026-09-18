@@ -20,4 +20,25 @@
     <string name="status_no_schedules">אין תזמונים מהטלפון בחשבון הזה עדיין. אפשר ליצור אחד באתר/בתוכנה, בעמוד תזמונים, ולבחור \"מהטלפון\".</string>
     <string name="status_running_now">בודק ושולח…</string>
     <string name="status_run_now_done">הבדיקה הסתיימה - ראו התראה לפרטים.</string>
+
+    <string name="btn_settings">הגדרות ⚙</string>
+    <string name="hint_select_schedules">סמנו את התזמונים שברצונכם למשוך ולשלוח עכשיו</string>
+    <string name="btn_pull_selected">משוך את התזמונים הנבחרים</string>
+    <string name="status_pulling">מושך נתונים מהשרת…</string>
+    <string name="status_pulled_ready">נמשכו %1$d תזמונים (%2$d אנשי קשר בסה״כ) - שמורים בטלפון ומוכנים לשליחה.</string>
+    <string name="btn_send_pulled">שלח את מה שנמשך עכשיו</string>
+    <string name="status_sending_foreground">שולח…</string>
+    <string name="status_sending_progress">שולח (%1$s): %2$d מתוך %3$d</string>
+    <string name="error_missing_number">לא נמצא מספר טלפון תקין</string>
+
+    <string name="settings_title">הגדרות</string>
+    <string name="settings_background_sync_label">סנכרון אוטומטי ברקע (כל 15 דק׳)</string>
+    <string name="settings_background_sync_hint">כשמופעל, האפליקציה בודקת ושולחת תזמונים אוטומטית ברקע - גם כשהיא סגורה - וגם מתחילה שליחה מיד עם ההתחברות. כשמכובה, שום דבר לא נשלח אוטומטית: יש למשוך ולשלוח תזמונים באופן ידני מתוך מסך הבית, ולקבל דו\"ח מפורט על כל שליחה.</string>
+
+    <string name="report_title">דו\"ח שליחה</string>
+    <string name="report_summary_all_ok">כל ה-%1$d ההודעות נשלחו בהצלחה.</string>
+    <string name="report_summary_with_failures">נשלחו %1$d הודעות בהצלחה, %2$d נכשלו.</string>
+    <string name="report_row_ok">%1$s — נשלח בהצלחה (%2$s)</string>
+    <string name="report_row_failed">%1$s — נכשל: %3$s (%2$s)</string>
+    <string name="btn_close">סגור</string>
 </resources>

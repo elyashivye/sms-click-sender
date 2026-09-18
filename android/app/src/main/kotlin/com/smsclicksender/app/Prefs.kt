@@ -33,6 +33,13 @@ class Prefs(context: Context) {
         get() = prefs.getString(KEY_PASSWORD, null)
         set(value) = prefs.edit().putString(KEY_PASSWORD, value).apply()
 
+    // Default true: preserves the original "connect once, it all runs
+    // automatically in the background" behavior unless the user opts into
+    // fully manual control via the settings screen.
+    var backgroundSyncEnabled: Boolean
+        get() = prefs.getBoolean(KEY_BACKGROUND_SYNC, true)
+        set(value) = prefs.edit().putBoolean(KEY_BACKGROUND_SYNC, value).apply()
+
     fun isConfigured(): Boolean = !serverUrl.isNullOrBlank() && !password.isNullOrBlank()
 
     fun clear() {
@@ -42,5 +49,6 @@ class Prefs(context: Context) {
     companion object {
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_PASSWORD = "password"
+        private const val KEY_BACKGROUND_SYNC = "background_sync_enabled"
     }
 }

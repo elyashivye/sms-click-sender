@@ -185,6 +185,19 @@ app.get("/api/schedules/due", requireAuth, async (req, res) => {
   res.json({ due });
 });
 
+// A single schedule's full record, payload included - unlike the list
+// endpoint above, which strips it. Lets the Android app's manual "pull
+// selected schedule(s) now" flow fetch exactly the schedule(s) the user
+// checked, on demand, regardless of whether they're technically due yet
+// (the whole point of that flow is user-driven control, not the
+// recurrence timer).
+app.get("/api/schedules/:id", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const schedule = req.db.schedules.find((s) => s.id === id);
+  if (!schedule) return res.status(404).json({ error: "תזמון לא נמצא" });
+  res.json({ schedule });
+});
+
 app.post("/api/schedules/:id/ack", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { status, message, sentCount } = req.body || {};
